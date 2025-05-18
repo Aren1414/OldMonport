@@ -1,0 +1,72 @@
+import React, { useState, useEffect } from "react";
+import { ethers } from "ethers";
+import { getFarcasterProfile } from "../utils/farcaster";
+import "../styles/App.css";
+
+const ProfileTab = () => {
+  const [walletAddress, setWalletAddress] = useState("");
+  const [balance, setBalance] = useState("0");
+  const [referrals, setReferrals] = useState(0);
+  const [points, setPoints] = useState(0);
+  const [userData, setUserData] = useState(null);
+
+  const connectWallet = async () => {
+    if (window.ethereum) {
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      setWalletAddress(accounts[0]);
+    }
+  };
+
+  const fetchBalance = async () => {
+    if (!walletAddress) return;
+    try {
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const bal = await provider.getBalance(walletAddress);
+      setBalance(ethers.formatEther(bal));
+    } catch (e) {
+      console.error("Balance fetch error:", e);
+    }
+  };
+
+  const fetchUserData = async () => {
+    if (!walletAddress) return;
+    try {
+      const profile = await getFarcasterProfile(walletAddress);
+      setUserData(profile);
+
+      setReferrals(profile.referrals || 0);
+      setPoints(profile.points || 0);
+    } catch (e) {
+      console.error("Error fetching Farcaster profile:", e);
+    }
+  };
+
+  useEffect(() => {
+    connectWallet();
+  }, []);
+
+  useEffect(() => {
+    if (walletAddress) {
+      fetchBalance();
+      fetchUserData();
+    }
+  }, [walletAddress]);
+
+  return (
+    <div className="tab profile-tab">
+      <h2>Your Profile</h2>
+      {userData && (
+        <div className="farcaster-info">
+          <img src={userData.avatar} alt="avatar" className="avatar" />
+          <h3>@{userData.username}</h3>
+        </div>
+      )}
+      <p><strong>Wallet:</strong> {walletAddress}</p>
+      <p><strong>Balance:</strong> {balance} MON</p>
+      <p><strong>Referrals:</strong> {referrals}</p>
+      <p><strong>Total Points:</strong> {points}</p>
+    </div>
+  );
+};
+
+export default ProfileTab;
