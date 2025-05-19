@@ -31,18 +31,27 @@ const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances 
   }, [tokenAddresses]);
 
   return (
-    <select
-      value={selectedToken}
-      onChange={(e) => onSelectToken(e.target.value)}
-      style={{ padding: "10px", fontSize: "16px" }}
-    >
-      <option value="">Select Token</option>
-      {tokens.map((token) => (
-        <option key={token.address} value={token.address}>
-          {token.symbol} — {balances?.[token.address] ? parseFloat(balances[token.address]).toFixed(4) : "0.0000"}
-        </option>
-      ))}
-    </select>
+    <div style={{ marginBottom: "16px" }}>
+      <select
+        value={selectedToken}
+        onChange={(e) => onSelectToken(e.target.value)}
+        style={{
+          width: "100%",
+          padding: "12px",
+          fontSize: "15px",
+          borderRadius: "8px",
+          border: "1px solid #ccc",
+          backgroundColor: "#f9f9f9",
+        }}
+      >
+        <option value="">Select Token</option>
+        {tokens.map((token) => (
+          <option key={token.address} value={token.address}>
+            {token.symbol} — {balances?.[token.address] ? parseFloat(balances[token.address]).toFixed(4) : "0.0000"}
+          </option>
+        ))}
+      </select>
+    </div>
   );
 };
 
