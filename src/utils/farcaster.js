@@ -16,6 +16,21 @@ export async function getUserProfile(fid) {
   }
 }
 
+export async function getFarcasterProfile(fid) {
+  try {
+    const res = await fetch(`${BASE_URL}/user/bulk?fids=${fid}`, {
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+      },
+    });
+    const data = await res.json();
+    return data.users?.[0] || null;
+  } catch (err) {
+    console.error("Error fetching Farcaster profile:", err);
+    return null;
+  }
+}
+
 export async function followUser(targetFid, signerUuid) {
   try {
     const res = await fetch(`${BASE_URL}/follow`, {
