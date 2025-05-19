@@ -57,3 +57,18 @@ export async function castToWarpcast(message, signerUuid) {
     return null;
   }
 }
+
+export async function getLeaderboardData() {
+  try {
+    const res = await fetch(`${BASE_URL}/leaderboard`, {
+      headers: {
+        Authorization: `Bearer ${API_KEY}`,
+      },
+    });
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error("Error fetching leaderboard data:", err);
+    return null;
+  }
+}
