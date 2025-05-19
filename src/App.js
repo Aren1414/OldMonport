@@ -4,7 +4,7 @@ import SwapTab from "./components/SwapTab";
 import DeployTab from "./components/DeployTab";
 import ProfileTab from "./components/ProfileTab";
 import LeaderboardTab from "./components/LeaderboardTab";
-import "./styles/App.css";
+import "./App.css";
 
 const App = () => {
   const [activeTab, setActiveTab] = useState("welcome");
