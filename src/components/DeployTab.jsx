@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ethers } from "ethers";
+import { BrowserProvider, Contract, parseUnits } from "ethers";
 import { NFTStorage, File } from "nft.storage";
 import monportAbi from "../abis/MonPortFactory.json";
 import { MONPORT_FACTORY_ADDRESS } from "../utils/contracts";
@@ -32,12 +32,12 @@ const DeployTab = () => {
         image: new File([file], file.name, { type: file.type }),
       });
 
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = new BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const contract = new ethers.Contract(FACTORY_ADDRESS, monportAbi, signer);
+      const contract = new Contract(MONPORT_FACTORY_ADDRESS, monportAbi, signer);
 
-      const value = ethers.parseUnits("0.5", 18);
-      const tx = await contract.deployCustomNFT(metadata.url, name, ethers.parseUnits(price, 18), {
+      const value = parseUnits("0.5", 18);
+      const tx = await contract.deployCustomNFT(metadata.url, name, parseUnits(price, 18), {
         value,
       });
       await tx.wait();
