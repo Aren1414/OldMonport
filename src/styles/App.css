@@ -21,6 +21,7 @@ body {
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
+  gap: 10px; /* Added spacing between buttons */
   background-color: #ffffff;
   padding: 10px;
   border-top: 1px solid #ddd;
@@ -30,7 +31,7 @@ body {
 
 .tab-navigation button {
   flex: 1;
-  margin: 0 5px;
+  margin: 0 8px; /* Adjusted spacing */
   padding: 10px;
   background-color: #eef1f5;
   border: none;
