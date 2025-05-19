@@ -9,7 +9,7 @@ body {
   max-width: 480px;
   margin: 0 auto;
   padding: 16px;
-  padding-bottom: 100px;
+  padding-bottom: 100px; /* space for bottom nav */
 }
 
 .tab-navigation {
@@ -134,43 +134,53 @@ body {
   text-align: center;
 }
 
-.swap-tab label {
-  display: block;
-  margin-top: 16px;
-  margin-bottom: 8px;
-  font-weight: 600;
+.swap-field {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 16px;
 }
 
-.swap-tab select,
-.swap-tab input {
-  width: 100%;
+.token-select {
   padding: 12px;
   font-size: 15px;
   border-radius: 8px;
   border: 1px solid #ccc;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 }
 
-.swap-tab button {
+.swap-field input {
+  padding: 12px;
+  font-size: 15px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
+
+.swap-switch {
+  display: flex;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.swap-switch button {
+  background-color: #e0e0e0;
+  border: none;
+  padding: 8px 12px;
+  border-radius: 50%;
+  font-size: 18px;
+  cursor: pointer;
+}
+
+.swap-button {
   width: 100%;
   padding: 12px;
-  margin-top: 10px;
+  background-color: #2266ee;
+  color: white;
   border: none;
   border-radius: 8px;
   font-weight: bold;
   font-size: 16px;
-  background-color: #2266ee;
-  color: white;
-  transition: background-color 0.2s;
 }
 
-.swap-tab button:hover {
+.swap-button:hover {
   background-color: #184fc9;
-}
-
-.swap-tab p {
-  margin-top: 10px;
-  text-align: center;
-  font-size: 14px;
-  color: #444;
 }
