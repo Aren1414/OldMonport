@@ -14,7 +14,7 @@ body {
 
 .tab-navigation {
   position: fixed;
-  bottom: 0; /* Keeps the tabs at the bottom */
+  bottom: 0;
   left: 0;
   right: 0;
   max-width: 480px;
@@ -30,7 +30,7 @@ body {
 
 .tab-navigation button {
   flex: 1;
-  margin: 6px;
+  margin: 3px; /* Reduced spacing */
   padding: 10px;
   background-color: #eef1f5;
   border: none;
@@ -53,23 +53,23 @@ body {
 .mint-options {
   display: flex;
   justify-content: center;
-  gap: 10px; /* Added spacing between mint amount buttons */
+  gap: 10px;
   margin: 20px 0;
 }
 
 .mint-btn {
   width: 100%;
-  margin-bottom: 12px; /* Added margin to separate buttons */
+  margin-bottom: 12px;
 }
 
 .share-btn {
   width: 100%;
-  margin-bottom: 12px; /* Added margin */
+  margin-bottom: 12px;
 }
 
 .follow-btn {
   width: 100%;
-  margin-bottom: 12px; /* Added margin */
+  margin-bottom: 12px;
 }
 
 .welcome-tab button {
