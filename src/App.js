@@ -1,11 +1,10 @@
 import React, { useState } from "react";
-// just a trigger for redeploy
 import WelcomeTab from "./components/WelcomeTab";
 import SwapTab from "./components/SwapTab";
 import DeployTab from "./components/DeployTab";
 import ProfileTab from "./components/ProfileTab";
 import LeaderboardTab from "./components/LeaderboardTab";
-import "./App.css";
+import "./styles/App.css";
 
 const App = () => {
   const [activeTab, setActiveTab] = useState("welcome");
