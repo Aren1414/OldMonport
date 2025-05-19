@@ -4,7 +4,7 @@ import { CROC_SWAP_ADDRESS } from "../utils/contracts";
 import CrocSwap_ABI from "../abis/CrocSwapDex.json";
 import TokenSelector from "./TokenSelector";
 
-const MON_ADDRESS = ethers.ZeroAddress; // Native MON token
+const MON_ADDRESS = ethers.ZeroAddress;
 
 const TOKEN_ADDRESSES = [
   MON_ADDRESS,
@@ -39,16 +39,19 @@ const SwapTab = () => {
     const provider = new ethers.BrowserProvider(window.ethereum);
     const newBalances = {};
     for (let addr of TOKEN_ADDRESSES) {
-      if (addr === ethers.ZeroAddress) {
-        const balance = await provider.getBalance(walletAddress);
-        newBalances[addr] = ethers.formatUnits(balance, 18);
-      } else {
-        const erc20 = new ethers.Contract(addr, [
-          "function balanceOf(address) view returns (uint256)",
-          "function symbol() view returns (string)"
-        ], provider);
-        const balance = await erc20.balanceOf(walletAddress);
-        newBalances[addr] = ethers.formatUnits(balance, 18);
+      try {
+        if (addr === ethers.ZeroAddress) {
+          const balance = await provider.getBalance(walletAddress);
+          newBalances[addr] = ethers.formatUnits(balance, 18);
+        } else {
+          const erc20 = new ethers.Contract(addr, [
+            "function balanceOf(address) view returns (uint256)"
+          ], provider);
+          const balance = await erc20.balanceOf(walletAddress);
+          newBalances[addr] = ethers.formatUnits(balance, 18);
+        }
+      } catch {
+        newBalances[addr] = "0";
       }
     }
     setBalances(newBalances);
@@ -78,7 +81,7 @@ const SwapTab = () => {
       alert("Swap successful!");
     } catch (err) {
       console.error("Swap failed:", err);
-      alert("Swap failed.");
+      alert("Swap failed. Check allowance or try again.");
     }
   };
 
@@ -91,10 +94,15 @@ const SwapTab = () => {
   }, [walletAddress]);
 
   return (
-    <div className="tab swap-tab">
-      <h2>Swap Tokens</h2>
+    <div className="tab swap-tab" style={{
+      backgroundColor: "#fff",
+      padding: "20px",
+      borderRadius: "12px",
+      boxShadow: "0 2px 10px rgba(0,0,0,0.05)"
+    }}>
+      <h2 style={{ marginBottom: "20px", fontSize: "22px" }}>Swap Tokens</h2>
 
-      <label>From Token</label>
+      <label style={{ fontWeight: "bold" }}>From Token</label>
       <TokenSelector
         selectedToken={fromToken}
         onSelectToken={setFromToken}
@@ -102,7 +110,7 @@ const SwapTab = () => {
         balances={balances}
       />
 
-      <label>To Token</label>
+      <label style={{ fontWeight: "bold", marginTop: "16px" }}>To Token</label>
       <TokenSelector
         selectedToken={toToken}
         onSelectToken={setToToken}
@@ -115,12 +123,20 @@ const SwapTab = () => {
         placeholder="Enter amount"
         value={amount}
         onChange={(e) => setAmount(e.target.value)}
+        style={{ width: "100%", marginTop: "16px", padding: "10px", borderRadius: "8px", border: "1px solid #ccc" }}
       />
 
-      <button onClick={fetchEstimate}>Estimate</button>
-      <p>Estimated Output: {estimated}</p>
+      <button onClick={fetchEstimate} style={{ marginTop: "10px", marginBottom: "10px", width: "100%" }}>
+        Estimate
+      </button>
 
-      <button onClick={executeSwap}>Swap</button>
+      <p style={{ fontSize: "16px", marginBottom: "10px" }}>
+        Estimated Output: <strong>{estimated}</strong>
+      </p>
+
+      <button onClick={executeSwap} style={{ backgroundColor: "#2266ee", width: "100%" }}>
+        Swap
+      </button>
     </div>
   );
 };
