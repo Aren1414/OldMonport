@@ -21,7 +21,6 @@ body {
   margin: 0 auto;
   display: flex;
   justify-content: space-between;
-  gap: 10px; /* Space between buttons */
   background-color: #ffffff;
   padding: 10px;
   border-top: 1px solid #ddd;
@@ -31,7 +30,7 @@ body {
 
 .tab-navigation button {
   flex: 1;
-  margin: 6px; /* Adjusted spacing */
+  margin: 6px;
   padding: 10px;
   background-color: #eef1f5;
   border: none;
@@ -46,26 +45,34 @@ body {
   background-color: #d5e2f5;
 }
 
-.tab-content {
-  background-color: #ffffff;
+.welcome-tab {
+  text-align: center;
   padding: 20px;
-  border-radius: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.05);
 }
 
-input, select, textarea {
+.mint-options {
+  display: flex;
+  justify-content: center;
+  gap: 10px; /* Added spacing between mint amount buttons */
+  margin: 20px 0;
+}
+
+.mint-btn {
   width: 100%;
-  padding: 10px;
-  margin-top: 10px;
-  margin-bottom: 20px;
-  border: 1px solid #ccc;
-  border-radius: 8px;
-  box-sizing: border-box;
+  margin-bottom: 12px; /* Added margin to separate buttons */
 }
 
-button {
-  background-color: #2266ee;
-  color: white;
+.share-btn {
+  width: 100%;
+  margin-bottom: 12px; /* Added margin */
+}
+
+.follow-btn {
+  width: 100%;
+  margin-bottom: 12px; /* Added margin */
+}
+
+.welcome-tab button {
   padding: 12px 20px;
   border: none;
   border-radius: 8px;
@@ -73,8 +80,23 @@ button {
   cursor: pointer;
 }
 
-button:hover {
+.mint-btn {
+  background-color: #2266ee;
+  color: white;
+}
+
+.mint-btn:hover {
   background-color: #184fc9;
+}
+
+.share-btn {
+  background-color: #34a853;
+  color: white;
+}
+
+.follow-btn {
+  background-color: #ff9800;
+  color: white;
 }
 
 .avatar {
