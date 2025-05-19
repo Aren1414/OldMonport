@@ -81,8 +81,15 @@ const SwapTab = () => {
       alert("Swap successful!");
     } catch (err) {
       console.error("Swap failed:", err);
-      alert("Swap failed. Check allowance or try again.");
+      alert("Swap failed.");
     }
+  };
+
+  const handleSwitch = () => {
+    const temp = fromToken;
+    setFromToken(toToken);
+    setToToken(temp);
+    setEstimated("-");
   };
 
   useEffect(() => {
@@ -102,39 +109,85 @@ const SwapTab = () => {
     }}>
       <h2 style={{ marginBottom: "20px", fontSize: "22px" }}>Swap Tokens</h2>
 
-      <label style={{ fontWeight: "bold" }}>From Token</label>
-      <TokenSelector
-        selectedToken={fromToken}
-        onSelectToken={setFromToken}
-        tokenAddresses={TOKEN_ADDRESSES.filter(addr => addr !== toToken)}
-        balances={balances}
-      />
+      <div style={{
+        backgroundColor: "#f3f3f3",
+        borderRadius: "12px",
+        padding: "15px",
+        marginBottom: "10px"
+      }}>
+        <TokenSelector
+          selectedToken={fromToken}
+          onSelectToken={setFromToken}
+          tokenAddresses={TOKEN_ADDRESSES.filter(addr => addr !== toToken)}
+          balances={balances}
+        />
+        <input
+          type="number"
+          placeholder="Enter amount"
+          value={amount}
+          onChange={(e) => setAmount(e.target.value)}
+          style={{
+            width: "100%",
+            marginTop: "10px",
+            padding: "10px",
+            fontSize: "16px",
+            borderRadius: "8px",
+            border: "1px solid #ccc"
+          }}
+        />
+      </div>
 
-      <label style={{ fontWeight: "bold", marginTop: "16px" }}>To Token</label>
-      <TokenSelector
-        selectedToken={toToken}
-        onSelectToken={setToToken}
-        tokenAddresses={TOKEN_ADDRESSES.filter(addr => addr !== fromToken)}
-        balances={balances}
-      />
+      <div style={{
+        textAlign: "center",
+        marginBottom: "10px"
+      }}>
+        <button onClick={handleSwitch} style={{
+          background: "#fff",
+          border: "1px solid #ccc",
+          borderRadius: "50%",
+          padding: "8px",
+          cursor: "pointer"
+        }}>
+          ⇅
+        </button>
+      </div>
 
-      <input
-        type="number"
-        placeholder="Enter amount"
-        value={amount}
-        onChange={(e) => setAmount(e.target.value)}
-        style={{ width: "100%", marginTop: "16px", padding: "10px", borderRadius: "8px", border: "1px solid #ccc" }}
-      />
+      <div style={{
+        backgroundColor: "#f3f3f3",
+        borderRadius: "12px",
+        padding: "15px",
+        marginBottom: "10px"
+      }}>
+        <TokenSelector
+          selectedToken={toToken}
+          onSelectToken={setToToken}
+          tokenAddresses={TOKEN_ADDRESSES.filter(addr => addr !== fromToken)}
+          balances={balances}
+        />
+        <div style={{
+          marginTop: "10px",
+          fontSize: "16px",
+          color: "#333"
+        }}>
+          ≈ {estimated} received
+        </div>
+      </div>
 
-      <button onClick={fetchEstimate} style={{ marginTop: "10px", marginBottom: "10px", width: "100%" }}>
-        Estimate
-      </button>
-
-      <p style={{ fontSize: "16px", marginBottom: "10px" }}>
-        Estimated Output: <strong>{estimated}</strong>
-      </p>
-
-      <button onClick={executeSwap} style={{ backgroundColor: "#2266ee", width: "100%" }}>
+      <button
+        onClick={executeSwap}
+        disabled={!walletAddress}
+        style={{
+          backgroundColor: "#2266ee",
+          color: "white",
+          padding: "12px",
+          borderRadius: "8px",
+          fontWeight: "bold",
+          width: "100%",
+          fontSize: "16px",
+          cursor: walletAddress ? "pointer" : "not-allowed",
+          opacity: walletAddress ? 1 : 0.6
+        }}
+      >
         Swap
       </button>
     </div>
