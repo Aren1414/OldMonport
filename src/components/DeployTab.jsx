@@ -4,7 +4,7 @@ import { NFTStorage, File } from "nft.storage";
 import monportAbi from "../abis/MonPortFactory.json";
 import { FACTORY_ADDRESS } from "../utils/contracts";
 
-const NFT_STORAGE_TOKEN = "YOUR_NFT_STORAGE_API_KEY";
+const NFT_STORAGE_TOKEN = process.env.NFT_STORAGE_API;
 
 const DeployTab = () => {
   const [file, setFile] = useState(null);
