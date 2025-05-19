@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
-import welcomeAbi from "../abis/welcomeAbi.json";
+import welcomeAbi from "../abis/welcomeNFT.json";
 import "../styles/App.css";
 
 const WELCOME_CONTRACT_ADDRESS = "0x40649af9dEE8bDB94Dc21BA2175AE8f5181f14AE";
