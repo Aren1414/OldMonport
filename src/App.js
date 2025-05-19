@@ -28,6 +28,8 @@ const App = () => {
 
   return (
     <div className="app-container">
+      <main className="tab-content">{renderTab()}</main>
+
       <nav className="tab-navigation">
         <button onClick={() => setActiveTab("profile")}>Profile</button>
         <button onClick={() => setActiveTab("swap")}>Swap</button>
@@ -35,10 +37,6 @@ const App = () => {
         <button onClick={() => setActiveTab("deploy")}>Deploy</button>
         <button onClick={() => setActiveTab("leaderboard")}>Leaderboard</button>
       </nav>
-
-      <main className="tab-content">
-        {renderTab()}
-      </main>
     </div>
   );
 };
