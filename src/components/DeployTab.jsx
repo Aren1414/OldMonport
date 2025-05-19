@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { NFTStorage, File } from "nft.storage";
 import monportAbi from "../abis/MonPortFactory.json";
-import { FACTORY_ADDRESS } from "../utils/contracts";
+import { MONPORT_FACTORY_ADDRESS } from "../utils/contracts";
 
 const NFT_STORAGE_TOKEN = process.env.NFT_STORAGE_API;
 
