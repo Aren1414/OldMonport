@@ -34,6 +34,14 @@ const SwapTab = () => {
     }
   };
 
+  const switchTokens = () => {
+    const temp = fromToken;
+    setFromToken(toToken);
+    setToToken(temp);
+    setEstimated("-");
+    setAmount("");
+  };
+
   const fetchBalances = async () => {
     if (!walletAddress) return;
     const provider = new ethers.BrowserProvider(window.ethereum);
@@ -81,15 +89,8 @@ const SwapTab = () => {
       alert("Swap successful!");
     } catch (err) {
       console.error("Swap failed:", err);
-      alert("Swap failed.");
+      alert("Swap failed. Check allowance or try again.");
     }
-  };
-
-  const handleSwitch = () => {
-    const temp = fromToken;
-    setFromToken(toToken);
-    setToToken(temp);
-    setEstimated("-");
   };
 
   useEffect(() => {
@@ -100,21 +101,15 @@ const SwapTab = () => {
     if (walletAddress) fetchBalances();
   }, [walletAddress]);
 
-  return (
-    <div className="tab swap-tab" style={{
-      backgroundColor: "#fff",
-      padding: "20px",
-      borderRadius: "12px",
-      boxShadow: "0 2px 10px rgba(0,0,0,0.05)"
-    }}>
-      <h2 style={{ marginBottom: "20px", fontSize: "22px" }}>Swap Tokens</h2>
+  useEffect(() => {
+    if (amount) fetchEstimate();
+  }, [amount, fromToken, toToken]);
 
-      <div style={{
-        backgroundColor: "#f3f3f3",
-        borderRadius: "12px",
-        padding: "15px",
-        marginBottom: "10px"
-      }}>
+  return (
+    <div className="tab swap-tab">
+      <h2>Token Swap</h2>
+
+      <div className="swap-field">
         <TokenSelector
           selectedToken={fromToken}
           onSelectToken={setFromToken}
@@ -126,68 +121,28 @@ const SwapTab = () => {
           placeholder="Enter amount"
           value={amount}
           onChange={(e) => setAmount(e.target.value)}
-          style={{
-            width: "100%",
-            marginTop: "10px",
-            padding: "10px",
-            fontSize: "16px",
-            borderRadius: "8px",
-            border: "1px solid #ccc"
-          }}
         />
       </div>
 
-      <div style={{
-        textAlign: "center",
-        marginBottom: "10px"
-      }}>
-        <button onClick={handleSwitch} style={{
-          background: "#fff",
-          border: "1px solid #ccc",
-          borderRadius: "50%",
-          padding: "8px",
-          cursor: "pointer"
-        }}>
-          ⇅
-        </button>
+      <div className="swap-switch">
+        <button onClick={switchTokens}>⇅</button>
       </div>
 
-      <div style={{
-        backgroundColor: "#f3f3f3",
-        borderRadius: "12px",
-        padding: "15px",
-        marginBottom: "10px"
-      }}>
+      <div className="swap-field">
         <TokenSelector
           selectedToken={toToken}
           onSelectToken={setToToken}
           tokenAddresses={TOKEN_ADDRESSES.filter(addr => addr !== fromToken)}
           balances={balances}
         />
-        <div style={{
-          marginTop: "10px",
-          fontSize: "16px",
-          color: "#333"
-        }}>
-          ≈ {estimated} received
-        </div>
+        <input
+          type="text"
+          value={estimated}
+          disabled
+        />
       </div>
 
-      <button
-        onClick={executeSwap}
-        disabled={!walletAddress}
-        style={{
-          backgroundColor: "#2266ee",
-          color: "white",
-          padding: "12px",
-          borderRadius: "8px",
-          fontWeight: "bold",
-          width: "100%",
-          fontSize: "16px",
-          cursor: walletAddress ? "pointer" : "not-allowed",
-          opacity: walletAddress ? 1 : 0.6
-        }}
-      >
+      <button onClick={executeSwap} className="swap-button">
         Swap
       </button>
     </div>
