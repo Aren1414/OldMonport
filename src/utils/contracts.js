@@ -4,7 +4,7 @@ export const MONPORT_FACTORY_ADDRESS = "0x3FFA88641129f4Ac39287Bd2768A165Ac6055e
 
 // ABIs
 import WelcomeNFT_ABI from "../abis/WelcomeNFT.json";
-import CrocSwap_ABI from "../abis/CrocSwap.json";
+import CrocSwap_ABI from "../abis/CrocSwapDex.json";
 import MonPortFactory_ABI from "../abis/MonPortFactory.json";
 
 export const WELCOME_NFT_ABI = WelcomeNFT_ABI;
