@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ethers } from "ethers";
+import { BrowserProvider, Contract } from "ethers";
 import ERC20_ABI from "../abis/ERC20.json";
 
 const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses }) => {
@@ -7,12 +7,12 @@ const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses }) => {
 
   useEffect(() => {
     const fetchSymbols = async () => {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const provider = new BrowserProvider(window.ethereum);
       const tokenList = [];
 
       for (const address of tokenAddresses) {
         try {
-          const contract = new ethers.Contract(address, ERC20_ABI, provider);
+          const contract = new Contract(address, ERC20_ABI, provider);
           const symbol = await contract.symbol();
           tokenList.push({ address, symbol });
         } catch {
