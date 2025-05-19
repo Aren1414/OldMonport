@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { CROC_SWAP_ADDRESS } from "../utils/contracts";
-import CrocSwap_ABI from "../abis/CrocSwap.json";
+import CrocSwap_ABI from "../abis/CrocSwapDex.json";
 import TokenSelector from "./TokenSelector";
 
 const TOKEN_ADDRESSES = [
