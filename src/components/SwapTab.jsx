@@ -4,7 +4,10 @@ import { CROC_SWAP_ADDRESS } from "../utils/contracts";
 import CrocSwap_ABI from "../abis/CrocSwapDex.json";
 import TokenSelector from "./TokenSelector";
 
+const MON_ADDRESS = ethers.ZeroAddress; // Native MON token
+
 const TOKEN_ADDRESSES = [
+  MON_ADDRESS,
   "0xb2f82D0f38dc453D596Ad40A37799446Cc89274A",
   "0xE0590015A873bF326bd645c3E1266d4db41C4E6B",
   "0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50",
@@ -22,12 +25,33 @@ const SwapTab = () => {
   const [toToken, setToToken] = useState("");
   const [amount, setAmount] = useState("");
   const [estimated, setEstimated] = useState("-");
+  const [balances, setBalances] = useState({});
 
   const connectWallet = async () => {
     if (window.ethereum) {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       setWalletAddress(accounts[0]);
     }
+  };
+
+  const fetchBalances = async () => {
+    if (!walletAddress) return;
+    const provider = new ethers.BrowserProvider(window.ethereum);
+    const newBalances = {};
+    for (let addr of TOKEN_ADDRESSES) {
+      if (addr === ethers.ZeroAddress) {
+        const balance = await provider.getBalance(walletAddress);
+        newBalances[addr] = ethers.formatUnits(balance, 18);
+      } else {
+        const erc20 = new ethers.Contract(addr, [
+          "function balanceOf(address) view returns (uint256)",
+          "function symbol() view returns (string)"
+        ], provider);
+        const balance = await erc20.balanceOf(walletAddress);
+        newBalances[addr] = ethers.formatUnits(balance, 18);
+      }
+    }
+    setBalances(newBalances);
   };
 
   const fetchEstimate = async () => {
@@ -62,6 +86,10 @@ const SwapTab = () => {
     connectWallet();
   }, []);
 
+  useEffect(() => {
+    if (walletAddress) fetchBalances();
+  }, [walletAddress]);
+
   return (
     <div className="tab swap-tab">
       <h2>Swap Tokens</h2>
@@ -71,6 +99,7 @@ const SwapTab = () => {
         selectedToken={fromToken}
         onSelectToken={setFromToken}
         tokenAddresses={TOKEN_ADDRESSES.filter(addr => addr !== toToken)}
+        balances={balances}
       />
 
       <label>To Token</label>
@@ -78,6 +107,7 @@ const SwapTab = () => {
         selectedToken={toToken}
         onSelectToken={setToToken}
         tokenAddresses={TOKEN_ADDRESSES.filter(addr => addr !== fromToken)}
+        balances={balances}
       />
 
       <input
@@ -90,7 +120,7 @@ const SwapTab = () => {
       <button onClick={fetchEstimate}>Estimate</button>
       <p>Estimated Output: {estimated}</p>
 
-      <button onClick={executeSwap}>Execute Swap</button>
+      <button onClick={executeSwap}>Swap</button>
     </div>
   );
 };
