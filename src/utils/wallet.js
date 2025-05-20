@@ -50,7 +50,7 @@ export const switchToMonadNetwork = async () => {
               blockExplorerUrls: ["https://testnet.monadexplorer.com/"],
             },
           ],
-        );
+        });
       } catch (addError) {
         console.error("Add network error:", addError);
       }
