@@ -1,10 +1,9 @@
 import React, { useState, useEffect } from "react";
-import { ethers, Contract } from "ethers";
-import { CROC_SWAP_ADDRESS } from "../utils/contracts";
-import CrocSwap_ABI from "../abis/CrocSwapDex.json";
-import ERC20_ABI from "../abis/ERC20.json";
+import { ethers } from "ethers";
 import TokenSelector from "./TokenSelector";
+import { connectWallet, getWalletAddress } from "../utils/wallet";
 
+const API_BASE = "https://api.0x.org/swap/v1/quote";
 const MON_ADDRESS = ethers.ZeroAddress;
 
 const TOKEN_ADDRESSES = [
@@ -26,99 +25,61 @@ const SwapTab = () => {
   const [toToken, setToToken] = useState("");
   const [amount, setAmount] = useState("");
   const [estimated, setEstimated] = useState("-");
-  const [balances, setBalances] = useState({});
-  const [decimalsMap, setDecimalsMap] = useState({});
+  const [quoteData, setQuoteData] = useState(null);
 
-  const connectWallet = async () => {
-    if (!window.ethereum) return;
-    const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-    setWalletAddress(accounts[0]);
+  const handleConnect = async () => {
+    const address = await connectWallet();
+    if (address) setWalletAddress(address);
   };
 
-  const fetchBalances = async () => {
-    if (!walletAddress) return;
-    const provider = new ethers.BrowserProvider(window.ethereum);
-    const newBalances = {};
-    const newDecimals = {};
+  const fetchQuote = async () => {
+    if (!fromToken || !toToken || !amount || !walletAddress) return;
 
-    for (let addr of TOKEN_ADDRESSES) {
-      try {
-        if (addr === ethers.ZeroAddress) {
-          const balance = await provider.getBalance(walletAddress);
-          newBalances[addr] = ethers.formatUnits(balance, 18);
-          newDecimals[addr] = 18;
-        } else {
-          const contract = new Contract(addr, ERC20_ABI, provider);
-          const [balance, decimals] = await Promise.all([
-            contract.balanceOf(walletAddress),
-            contract.decimals(),
-          ]);
-          newBalances[addr] = ethers.formatUnits(balance, decimals);
-          newDecimals[addr] = decimals;
-        }
-      } catch {
-        newBalances[addr] = "0";
-        newDecimals[addr] = 18;
-      }
-    }
+    const sellToken = fromToken === ethers.ZeroAddress ? "ETH" : fromToken;
+    const buyToken = toToken === ethers.ZeroAddress ? "ETH" : toToken;
+    const sellAmount = ethers.parseUnits(amount, 18).toString();
 
-    setBalances(newBalances);
-    setDecimalsMap(newDecimals);
-  };
-
-  const fetchEstimate = async () => {
-    if (!fromToken || !toToken || !amount) return;
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const contract = new Contract(CROC_SWAP_ADDRESS, CrocSwap_ABI, provider);
+      const res = await fetch(`${API_BASE}?sellToken=${sellToken}&buyToken=${buyToken}&sellAmount=${sellAmount}&takerAddress=${walletAddress}`, {
+        headers: {
+          "0x-api-key": process.env.NEXT_PUBLIC_ZEROX_API_KEY,
+        },
+      });
 
-      const fromDecimals = decimalsMap[fromToken] || 18;
-      const parsedAmount = ethers.parseUnits(amount, fromDecimals);
-
-      const result = await contract.getQuote(fromToken, toToken, parsedAmount);
-      setEstimated(ethers.formatUnits(result, 18));
+      const data = await res.json();
+      if (data?.buyAmount) {
+        setEstimated(ethers.formatUnits(data.buyAmount, 18));
+        setQuoteData(data);
+      } else {
+        setEstimated("-");
+        setQuoteData(null);
+      }
     } catch (err) {
-      console.error("Estimate failed:", err);
+      console.error("Quote fetch failed:", err);
       setEstimated("-");
+      setQuoteData(null);
     }
   };
 
   const executeSwap = async () => {
-    if (!walletAddress || !fromToken || !toToken || !amount) return;
+    if (!quoteData || !walletAddress) return;
+
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const contract = new Contract(CROC_SWAP_ADDRESS, CrocSwap_ABI, signer);
 
-      const fromDecimals = decimalsMap[fromToken] || 18;
-      const parsedAmount = ethers.parseUnits(amount, fromDecimals);
+      const tx = await signer.sendTransaction({
+        to: quoteData.to,
+        data: quoteData.data,
+        value: quoteData.value || "0",
+        gasLimit: quoteData.gas || 300000,
+      });
 
-      if (fromToken !== ethers.ZeroAddress) {
-        const erc20 = new Contract(fromToken, ERC20_ABI, signer);
-        const allowance = await erc20.allowance(walletAddress, CROC_SWAP_ADDRESS);
-        if (allowance < parsedAmount) {
-          const approveTx = await erc20.approve(CROC_SWAP_ADDRESS, parsedAmount);
-          await approveTx.wait();
-        }
-      }
-
-      const tx = await contract.swap(
-        fromToken,
-        toToken,
-        36000,
-        true,
-        true,
-        parsedAmount,
-        0,
-        0,
-        0,
-        0
-      );
       await tx.wait();
       alert("Swap successful!");
     } catch (err) {
       console.error("Swap failed:", err);
-      alert("Swap failed. Check parameters or network.");
+      alert("Swap failed. Check the console.");
     }
   };
 
@@ -128,19 +89,18 @@ const SwapTab = () => {
     setToToken(temp);
     setAmount("");
     setEstimated("-");
+    setQuoteData(null);
   };
 
   useEffect(() => {
-    connectWallet();
+    handleConnect();
   }, []);
 
   useEffect(() => {
-    if (walletAddress) fetchBalances();
-  }, [walletAddress]);
-
-  useEffect(() => {
-    if (amount && fromToken && toToken) fetchEstimate();
-  }, [amount, fromToken, toToken]);
+    if (fromToken && toToken && amount) {
+      fetchQuote();
+    }
+  }, [fromToken, toToken, amount, walletAddress]);
 
   return (
     <div className="tab swap-tab">
@@ -151,7 +111,6 @@ const SwapTab = () => {
           selectedToken={fromToken}
           onSelectToken={setFromToken}
           tokenAddresses={TOKEN_ADDRESSES.filter(addr => addr !== toToken)}
-          balances={balances}
         />
         <input
           type="number"
@@ -170,7 +129,6 @@ const SwapTab = () => {
           selectedToken={toToken}
           onSelectToken={setToToken}
           tokenAddresses={TOKEN_ADDRESSES.filter(addr => addr !== fromToken)}
-          balances={balances}
         />
         <input type="text" value={estimated} disabled />
       </div>
