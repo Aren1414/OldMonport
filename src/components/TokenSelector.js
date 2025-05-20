@@ -6,28 +6,28 @@ const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances 
   const [tokens, setTokens] = useState([]);
 
   useEffect(() => {
-    const fetchTokens = async () => {
-      const provider = new ethers.BrowserProvider(window.ethereum);
+    const fetchTokenData = async () => {
+      if (!window.ethereum) return;
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
       const tokenList = [];
 
       for (const address of tokenAddresses) {
-        if (address === ethers.ZeroAddress) {
+        if (address === ethers.constants.AddressZero) {
           tokenList.push({ address, symbol: "MON" });
         } else {
           try {
             const contract = new Contract(address, ERC20_ABI, provider);
             const symbol = await contract.symbol();
             tokenList.push({ address, symbol });
-          } catch (error) {
+          } catch {
             tokenList.push({ address, symbol: "UNKNOWN" });
           }
         }
       }
-
       setTokens(tokenList);
     };
 
-    fetchTokens();
+    fetchTokenData();
   }, [tokenAddresses]);
 
   return (
@@ -37,9 +37,9 @@ const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances 
       className="token-select"
     >
       <option value="">Select Token</option>
-      {tokens.map((token) => (
-        <option key={token.address} value={token.address}>
-          {token.symbol} — {balances?.[token.address] ? parseFloat(balances[token.address]).toFixed(4) : "0.0000"}
+      {tokens.map(({ address, symbol }) => (
+        <option key={address} value={address}>
+          {symbol} — {balances?.[address] ? parseFloat(balances[address]).toFixed(4) : "0.0000"}
         </option>
       ))}
     </select>
