@@ -1,16 +1,3 @@
-const MONAD_CHAIN_ID = "0x279f"; // 10143
-const MONAD_PARAMS = {
-  chainId: MONAD_CHAIN_ID,
-  chainName: "Monad Testnet",
-  nativeCurrency: {
-    name: "MON",
-    symbol: "MON",
-    decimals: 18,
-  },
-  rpcUrls: ["https://testnet-rpc.monad.xyz/"],
-  blockExplorerUrls: ["https://testnet.monadexplorer.com/"],
-};
-
 export const connectWallet = async () => {
   if (!window.ethereum) {
     alert("Please install a wallet like MetaMask");
@@ -18,18 +5,10 @@ export const connectWallet = async () => {
   }
 
   try {
+    await switchToMonadNetwork();
     const accounts = await window.ethereum.request({
       method: "eth_requestAccounts",
     });
-
-    const currentChainId = await window.ethereum.request({
-      method: "eth_chainId",
-    });
-
-    if (currentChainId !== MONAD_CHAIN_ID) {
-      await switchToMonadNetwork();
-    }
-
     return accounts[0];
   } catch (err) {
     console.error("Wallet connection error:", err);
@@ -37,30 +16,46 @@ export const connectWallet = async () => {
   }
 };
 
+export const getWalletAddress = async () => {
+  if (!window.ethereum) return null;
+  const accounts = await window.ethereum.request({ method: "eth_accounts" });
+  return accounts[0] || null;
+};
+
 export const switchToMonadNetwork = async () => {
+  if (!window.ethereum) return;
+
+  const monadChainId = "0x279f"; // 10143 in hex
+
   try {
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
-      params: [{ chainId: MONAD_CHAIN_ID }],
+      params: [{ chainId: monadChainId }],
     });
   } catch (switchError) {
     if (switchError.code === 4902) {
       try {
         await window.ethereum.request({
           method: "wallet_addEthereumChain",
-          params: [MONAD_PARAMS],
-        });
+          params: [
+            {
+              chainId: monadChainId,
+              chainName: "Monad Testnet",
+              nativeCurrency: {
+                name: "Monad",
+                symbol: "MON",
+                decimals: 18,
+              },
+              rpcUrls: ["https://testnet-rpc.monad.xyz/"],
+              blockExplorerUrls: ["https://testnet.monadexplorer.com/"],
+            },
+          ],
+        );
       } catch (addError) {
-        console.error("Failed to add Monad network:", addError);
+        console.error("Add network error:", addError);
       }
     } else {
       console.error("Switch network error:", switchError);
     }
   }
-};
-
-export const getWalletAddress = async () => {
-  if (!window.ethereum) return null;
-  const accounts = await window.ethereum.request({ method: "eth_accounts" });
-  return accounts[0] || null;
 };
