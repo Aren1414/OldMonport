@@ -62,8 +62,7 @@ const SwapTab = () => {
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const contract = new ethers.Contract(CROC_SWAP_ADDRESS, CrocSwap_ABI, provider);
-      const parsed = ethers.parseUnits(amount, 18);
-      const result = await contract.getQuote(fromToken, toToken, parsed);
+      const result = await contract.getQuote(fromToken, toToken, ethers.parseUnits(amount, 18));
       setEstimated(ethers.formatUnits(result, 18));
     } catch (err) {
       console.error("Estimate failed:", err);
@@ -78,6 +77,7 @@ const SwapTab = () => {
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CROC_SWAP_ADDRESS, CrocSwap_ABI, signer);
       const parsedAmount = ethers.parseUnits(amount, 18);
+      const minAmountOut = ethers.parseUnits("0", 18); // if needed, can set slippage later
 
       if (fromToken !== ethers.ZeroAddress) {
         const erc20 = new ethers.Contract(fromToken, ERC20_ABI, signer);
@@ -88,7 +88,7 @@ const SwapTab = () => {
         }
       }
 
-      const tx = await contract.swap(fromToken, toToken, parsedAmount);
+      const tx = await contract.swap(fromToken, toToken, parsedAmount, walletAddress, minAmountOut);
       await tx.wait();
       alert("Swap successful!");
     } catch (err) {
