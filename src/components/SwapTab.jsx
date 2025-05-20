@@ -1,18 +1,16 @@
-import React, { useState, useEffect } from "react";
-import { ethers } from "ethers";
+import React, { useEffect, useState } from "react";
+import { ethers, Contract } from "ethers";
 import TokenSelector from "./TokenSelector";
-import { connectWallet, getWalletAddress } from "../utils/wallet";
+import ERC20_ABI from "../abis/ERC20.json";
 
-const API_BASE = "https://api.0x.org/swap/v1/quote";
-const MON_ADDRESS = ethers.ZeroAddress;
+const MONAD_RPC = "https://rpc.testnet.monad.xyz";
+const ZERO_ADDRESS = ethers.ZeroAddress;
 
-const TOKEN_ADDRESSES = [
-  MON_ADDRESS,
+const tokenAddresses = [
   "0xb2f82D0f38dc453D596Ad40A37799446Cc89274A",
   "0xE0590015A873bF326bd645c3E1266d4db41C4E6B",
   "0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50",
-  "0x0F0BDEbF0F83cD1EE3974779Bcb7315f9808c714",
-  "0xaEef2f6B429Cb59C9B2D7bB2141ADa993E8571c3",
+  "0x0F0BDEbF0F83cD1EE3974779bcb7315f9808c714",
   "0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701",
   "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea",
   "0xB5a30b0FDc5EA94A52fDc42e3E9760Cb8449Fb37",
@@ -20,122 +18,195 @@ const TOKEN_ADDRESSES = [
 ];
 
 const SwapTab = () => {
-  const [walletAddress, setWalletAddress] = useState("");
+  const [provider, setProvider] = useState(null);
+  const [signer, setSigner] = useState(null);
+  const [account, setAccount] = useState("");
+  const [balances, setBalances] = useState({});
   const [fromToken, setFromToken] = useState("");
   const [toToken, setToToken] = useState("");
-  const [amount, setAmount] = useState("");
-  const [estimated, setEstimated] = useState("-");
-  const [quoteData, setQuoteData] = useState(null);
-
-  const handleConnect = async () => {
-    const address = await connectWallet();
-    if (address) setWalletAddress(address);
-  };
-
-  const fetchQuote = async () => {
-    if (!fromToken || !toToken || !amount || !walletAddress) return;
-
-    const sellToken = fromToken === ethers.ZeroAddress ? "ETH" : fromToken;
-    const buyToken = toToken === ethers.ZeroAddress ? "ETH" : toToken;
-    const sellAmount = ethers.parseUnits(amount, 18).toString();
-
-    try {
-      const res = await fetch(`${API_BASE}?sellToken=${sellToken}&buyToken=${buyToken}&sellAmount=${sellAmount}&takerAddress=${walletAddress}`, {
-        headers: {
-          "0x-api-key": process.env.NEXT_PUBLIC_ZEROX_API_KEY,
-        },
-      });
-
-      const data = await res.json();
-      if (data?.buyAmount) {
-        setEstimated(ethers.formatUnits(data.buyAmount, 18));
-        setQuoteData(data);
-      } else {
-        setEstimated("-");
-        setQuoteData(null);
-      }
-    } catch (err) {
-      console.error("Quote fetch failed:", err);
-      setEstimated("-");
-      setQuoteData(null);
-    }
-  };
-
-  const executeSwap = async () => {
-    if (!quoteData || !walletAddress) return;
-
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-
-      const tx = await signer.sendTransaction({
-        to: quoteData.to,
-        data: quoteData.data,
-        value: quoteData.value || "0",
-        gasLimit: quoteData.gas || 300000,
-      });
-
-      await tx.wait();
-      alert("Swap successful!");
-    } catch (err) {
-      console.error("Swap failed:", err);
-      alert("Swap failed. Check the console.");
-    }
-  };
-
-  const switchTokens = () => {
-    const temp = fromToken;
-    setFromToken(toToken);
-    setToToken(temp);
-    setAmount("");
-    setEstimated("-");
-    setQuoteData(null);
-  };
+  const [fromAmount, setFromAmount] = useState("");
+  const [toAmount, setToAmount] = useState("");
+  const [isSwapping, setIsSwapping] = useState(false);
 
   useEffect(() => {
-    handleConnect();
+    if (!window.ethereum) return;
+    const ethProvider = new ethers.BrowserProvider(window.ethereum);
+    setProvider(ethProvider);
+    ethProvider.getSigner().then(setSigner);
   }, []);
 
-  useEffect(() => {
-    if (fromToken && toToken && amount) {
-      fetchQuote();
+  const connectWallet = async () => {
+    if (!window.ethereum) return alert("Please install a wallet");
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+      setAccount(accounts[0]);
+      const ethProvider = new ethers.BrowserProvider(window.ethereum);
+      setProvider(ethProvider);
+      setSigner(await ethProvider.getSigner());
+      await switchToMonadNetwork();
+      fetchBalances(accounts[0]);
+    } catch (e) {
+      alert("Wallet connection failed");
     }
-  }, [fromToken, toToken, amount, walletAddress]);
+  };
+
+  const switchToMonadNetwork = async () => {
+    if (!window.ethereum) return;
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: "0x506" }]
+      });
+    } catch (switchError) {
+      if (switchError.code === 4902) {
+        try {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [{
+              chainId: "0x506",
+              chainName: "Monad Testnet",
+              nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
+              rpcUrls: [MONAD_RPC],
+              blockExplorerUrls: ["https://testnet.monadscan.io"]
+            }]
+          });
+        } catch (addError) {
+          console.error("Add network error:", addError);
+        }
+      }
+    }
+  };
+
+  const fetchBalances = async (userAddress) => {
+    if (!provider) return;
+    const newBalances = {};
+    for (const address of tokenAddresses) {
+      if (address === ZERO_ADDRESS) {
+        const bal = await provider.getBalance(userAddress);
+        newBalances[ZERO_ADDRESS] = Number(ethers.formatEther(bal));
+      } else {
+        try {
+          const contract = new Contract(address, ERC20_ABI, provider);
+          const bal = await contract.balanceOf(userAddress);
+          newBalances[address] = Number(ethers.formatUnits(bal, 18));
+        } catch {
+          newBalances[address] = 0;
+        }
+      }
+    }
+    setBalances(newBalances);
+  };
+
+  useEffect(() => {
+    const calculateSwap = async () => {
+      if (!fromToken || !toToken || !fromAmount || isNaN(fromAmount) || Number(fromAmount) <= 0) {
+        setToAmount("");
+        return;
+      }
+      if (!account) return;
+
+      try {
+        const fromTokenAddress = fromToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : fromToken;
+        const toTokenAddress = toToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : toToken;
+
+        const url = `https://api.0x.org/swap/v1/price?sellToken=${fromTokenAddress}&buyToken=${toTokenAddress}&sellAmount=${ethers.parseUnits(fromAmount, 18).toString()}`;
+
+        const response = await fetch(url);
+        const data = await response.json();
+
+        if (data && data.buyAmount) {
+          setToAmount(ethers.formatUnits(data.buyAmount, 18));
+        } else {
+          setToAmount("");
+        }
+      } catch {
+        setToAmount("");
+      }
+    };
+
+    calculateSwap();
+  }, [fromToken, toToken, fromAmount, account]);
+
+  const executeSwap = async () => {
+    if (!signer) return alert("Connect wallet first");
+    if (!fromToken || !toToken || !fromAmount) return alert("Fill all fields");
+
+    setIsSwapping(true);
+
+    try {
+      const fromTokenAddress = fromToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : fromToken;
+      const toTokenAddress = toToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : toToken;
+
+      const url = `https://api.0x.org/swap/v1/quote?sellToken=${fromTokenAddress}&buyToken=${toTokenAddress}&sellAmount=${ethers.parseUnits(fromAmount, 18).toString()}&takerAddress=${account}`;
+
+      const response = await fetch(url);
+      const data = await response.json();
+
+      if (!data || !data.to || !data.data) {
+        alert("Swap quote error");
+        setIsSwapping(false);
+        return;
+      }
+
+      const tx = {
+        to: data.to,
+        data: data.data,
+        value: data.value ? ethers.parseEther(data.value) : undefined,
+        gasPrice: data.gasPrice ? ethers.parseUnits(data.gasPrice, "gwei") : undefined
+      };
+
+      const txResponse = await signer.sendTransaction(tx);
+      await txResponse.wait();
+
+      alert("Swap successful");
+      fetchBalances(account);
+      setFromAmount("");
+      setToAmount("");
+    } catch (error) {
+      alert("Swap failed: " + error.message);
+    } finally {
+      setIsSwapping(false);
+    }
+  };
 
   return (
-    <div className="tab swap-tab">
-      <h2>Token Swap</h2>
+    <div className="swap-tab">
+      {!account ? (
+        <button onClick={connectWallet}>Connect Wallet</button>
+      ) : (
+        <>
+          <div>
+            <label>From:</label>
+            <TokenSelector
+              selectedToken={fromToken}
+              onSelectToken={setFromToken}
+              tokenAddresses={tokenAddresses}
+              balances={balances}
+            />
+            <input
+              type="number"
+              value={fromAmount}
+              onChange={(e) => setFromAmount(e.target.value)}
+              placeholder="Amount"
+            />
+          </div>
 
-      <div className="swap-field">
-        <TokenSelector
-          selectedToken={fromToken}
-          onSelectToken={setFromToken}
-          tokenAddresses={TOKEN_ADDRESSES.filter(addr => addr !== toToken)}
-        />
-        <input
-          type="number"
-          placeholder="Enter amount"
-          value={amount}
-          onChange={(e) => setAmount(e.target.value)}
-        />
-      </div>
+          <div>
+            <label>To:</label>
+            <TokenSelector
+              selectedToken={toToken}
+              onSelectToken={setToToken}
+              tokenAddresses={tokenAddresses}
+              balances={balances}
+            />
+            <input type="text" value={toAmount} readOnly placeholder="Estimated amount" />
+          </div>
 
-      <div className="swap-switch">
-        <button onClick={switchTokens}>⇅</button>
-      </div>
-
-      <div className="swap-field">
-        <TokenSelector
-          selectedToken={toToken}
-          onSelectToken={setToToken}
-          tokenAddresses={TOKEN_ADDRESSES.filter(addr => addr !== fromToken)}
-        />
-        <input type="text" value={estimated} disabled />
-      </div>
-
-      <button onClick={executeSwap} className="swap-button">
-        Swap
-      </button>
+          <button onClick={executeSwap} disabled={isSwapping || !fromAmount || !toAmount}>
+            {isSwapping ? "Swapping..." : "Swap"}
+          </button>
+        </>
+      )}
     </div>
   );
 };
