@@ -1,57 +1,56 @@
 export const connectWallet = async () => {
   if (!window.ethereum) {
-    alert("Please install MetaMask.");
+    alert("Please install a wallet like MetaMask or use a compatible wallet.");
     return null;
   }
 
-  const MONAD_PARAMS = {
-    chainId: "0x278f", // 10143 in hex
-    chainName: "Monad Testnet",
-    nativeCurrency: {
-      name: "Monad",
-      symbol: "MON",
-      decimals: 18,
-    },
-    rpcUrls: ["https://testnet-rpc.monad.xyz/"],
-    blockExplorerUrls: ["https://testnet.monadexplorer.com/"],
-  };
+  const monadChainId = "0x279F"; // 10143 in hex
 
   try {
-    const chainId = await window.ethereum.request({ method: "eth_chainId" });
-
-    if (chainId !== MONAD_PARAMS.chainId) {
+    // Try switching to Monad Testnet
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: monadChainId }],
+    });
+  } catch (switchError) {
+    // If Monad Testnet is not added, add it
+    if (switchError.code === 4902) {
       try {
-        // Try to switch to Monad
         await window.ethereum.request({
-          method: "wallet_switchEthereumChain",
-          params: [{ chainId: MONAD_PARAMS.chainId }],
+          method: "wallet_addEthereumChain",
+          params: [{
+            chainId: monadChainId,
+            chainName: "Monad Testnet",
+            nativeCurrency: {
+              name: "MON",
+              symbol: "MON",
+              decimals: 18,
+            },
+            rpcUrls: ["https://testnet-rpc.monad.xyz/"],
+            blockExplorerUrls: ["https://testnet.monadexplorer.com/"]
+          }]
         });
-      } catch (switchError) {
-        // If Monad not added, try to add it
-        if (switchError.code === 4902) {
-          try {
-            await window.ethereum.request({
-              method: "wallet_addEthereumChain",
-              params: [MONAD_PARAMS],
-            });
-          } catch (addError) {
-            console.error("Failed to add Monad chain:", addError);
-            alert("Failed to add Monad network to MetaMask.");
-            return null;
-          }
-        } else {
-          console.error("Switch chain error:", switchError);
-          alert("Please switch to Monad network in MetaMask manually.");
-          return null;
-        }
+      } catch (addError) {
+        console.error("Failed to add Monad Testnet:", addError);
+        return null;
       }
+    } else {
+      console.error("Network switch failed:", switchError);
+      return null;
     }
+  }
 
+  try {
     const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
     return accounts[0];
   } catch (err) {
     console.error("Wallet connection error:", err);
-    alert("Wallet connection failed.");
     return null;
   }
+};
+
+export const getWalletAddress = async () => {
+  if (!window.ethereum) return null;
+  const accounts = await window.ethereum.request({ method: "eth_accounts" });
+  return accounts[0] || null;
 };
