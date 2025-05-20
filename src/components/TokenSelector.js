@@ -1,24 +1,24 @@
 import React, { useEffect, useState } from "react";
-import { Contract, ethers } from "ethers";
+import { ethers, Contract } from "ethers";
 import ERC20_ABI from "../abis/ERC20.json";
 
 const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances }) => {
   const [tokens, setTokens] = useState([]);
 
   useEffect(() => {
-    const fetchTokenData = async () => {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const fetchTokens = async () => {
+      const provider = new ethers.BrowserProvider(window.ethereum);
       const tokenList = [];
 
       for (const address of tokenAddresses) {
-        if (address === ethers.constants.AddressZero) {
+        if (address === ethers.ZeroAddress) {
           tokenList.push({ address, symbol: "MON" });
         } else {
           try {
             const contract = new Contract(address, ERC20_ABI, provider);
             const symbol = await contract.symbol();
             tokenList.push({ address, symbol });
-          } catch {
+          } catch (error) {
             tokenList.push({ address, symbol: "UNKNOWN" });
           }
         }
@@ -27,7 +27,7 @@ const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances 
       setTokens(tokenList);
     };
 
-    fetchTokenData();
+    fetchTokens();
   }, [tokenAddresses]);
 
   return (
