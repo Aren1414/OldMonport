@@ -2,6 +2,7 @@ import React, { useState, useEffect } from "react";
 import { ethers } from "ethers";
 import { CROC_SWAP_ADDRESS } from "../utils/contracts";
 import CrocSwap_ABI from "../abis/CrocSwapDex.json";
+import ERC20_ABI from "../abis/ERC20.json";
 import TokenSelector from "./TokenSelector";
 
 const MON_ADDRESS = ethers.ZeroAddress;
@@ -34,14 +35,6 @@ const SwapTab = () => {
     }
   };
 
-  const switchTokens = () => {
-    const temp = fromToken;
-    setFromToken(toToken);
-    setToToken(temp);
-    setEstimated("-");
-    setAmount("");
-  };
-
   const fetchBalances = async () => {
     if (!walletAddress) return;
     const provider = new ethers.BrowserProvider(window.ethereum);
@@ -52,9 +45,7 @@ const SwapTab = () => {
           const balance = await provider.getBalance(walletAddress);
           newBalances[addr] = ethers.formatUnits(balance, 18);
         } else {
-          const erc20 = new ethers.Contract(addr, [
-            "function balanceOf(address) view returns (uint256)"
-          ], provider);
+          const erc20 = new ethers.Contract(addr, ERC20_ABI, provider);
           const balance = await erc20.balanceOf(walletAddress);
           newBalances[addr] = ethers.formatUnits(balance, 18);
         }
@@ -83,14 +74,34 @@ const SwapTab = () => {
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
-      const contract = new ethers.Contract(CROC_SWAP_ADDRESS, CrocSwap_ABI, signer);
-      const tx = await contract.swap(fromToken, toToken, ethers.parseUnits(amount, 18));
+      const swapContract = new ethers.Contract(CROC_SWAP_ADDRESS, CrocSwap_ABI, signer);
+      const parsedAmount = ethers.parseUnits(amount, 18);
+
+      // approve if needed
+      if (fromToken !== ethers.ZeroAddress) {
+        const erc20 = new ethers.Contract(fromToken, ERC20_ABI, signer);
+        const allowance = await erc20.allowance(walletAddress, CROC_SWAP_ADDRESS);
+        if (allowance < parsedAmount) {
+          const approveTx = await erc20.approve(CROC_SWAP_ADDRESS, parsedAmount);
+          await approveTx.wait();
+        }
+      }
+
+      const tx = await swapContract.swap(fromToken, toToken, parsedAmount);
       await tx.wait();
       alert("Swap successful!");
     } catch (err) {
       console.error("Swap failed:", err);
-      alert("Swap failed. Check allowance or try again.");
+      alert("Swap failed. Try again.");
     }
+  };
+
+  const switchTokens = () => {
+    const temp = fromToken;
+    setFromToken(toToken);
+    setToToken(temp);
+    setAmount("");
+    setEstimated("-");
   };
 
   useEffect(() => {
@@ -102,7 +113,7 @@ const SwapTab = () => {
   }, [walletAddress]);
 
   useEffect(() => {
-    if (amount) fetchEstimate();
+    if (amount && fromToken && toToken) fetchEstimate();
   }, [amount, fromToken, toToken]);
 
   return (
@@ -135,11 +146,7 @@ const SwapTab = () => {
           tokenAddresses={TOKEN_ADDRESSES.filter(addr => addr !== fromToken)}
           balances={balances}
         />
-        <input
-          type="text"
-          value={estimated}
-          disabled
-        />
+        <input type="text" value={estimated} disabled />
       </div>
 
       <button onClick={executeSwap} className="swap-button">
