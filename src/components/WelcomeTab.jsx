@@ -21,10 +21,10 @@ const WelcomeTab = () => {
   const mintNFT = async () => {
     if (!walletAddress) return alert("Connect wallet first.");
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
       const contract = new ethers.Contract(WELCOME_CONTRACT_ADDRESS, welcomeAbi, signer);
-      const value = ethers.parseUnits((NFT_PRICE * selectedAmount).toString(), 18);
+      const value = ethers.utils.parseUnits((NFT_PRICE * selectedAmount).toString(), 18);
       const tx = await contract.mint(selectedAmount, { value });
       await tx.wait();
       alert("Mint successful!");
