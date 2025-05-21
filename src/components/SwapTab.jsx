@@ -46,7 +46,7 @@ const SwapTab = () => {
       setSigner(ethProvider.getSigner());
       await switchToMonadNetwork();
       fetchBalances(accounts[0]);
-    } catch (e) {
+    } catch {
       alert("Wallet connection failed");
     }
   };
@@ -105,7 +105,6 @@ const SwapTab = () => {
         return;
       }
       if (!account) return;
-
       try {
         const fromAddress = fromToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : fromToken;
         const toAddress = toToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : toToken;
@@ -124,16 +123,13 @@ const SwapTab = () => {
         setToAmount("");
       }
     };
-
     calculateSwap();
   }, [fromToken, toToken, fromAmount, account]);
 
   const executeSwap = async () => {
     if (!signer) return alert("Connect wallet first");
     if (!fromToken || !toToken || !fromAmount) return alert("Fill all fields");
-
     setIsSwapping(true);
-
     try {
       const fromAddress = fromToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : fromToken;
       const toAddress = toToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : toToken;
@@ -158,7 +154,6 @@ const SwapTab = () => {
 
       const txResponse = await signer.sendTransaction(tx);
       await txResponse.wait();
-
       alert("Swap successful");
       fetchBalances(account);
       setFromAmount("");
@@ -173,10 +168,12 @@ const SwapTab = () => {
   return (
     <div className="swap-tab">
       {!account ? (
-        <button onClick={connectWallet}>Connect Wallet</button>
+        <button className="swap-button" onClick={connectWallet}>
+          Connect Wallet
+        </button>
       ) : (
         <>
-          <div className="swap-row">
+          <div className="swap-field">
             <label>From:</label>
             <TokenSelector
               selectedToken={fromToken}
@@ -186,14 +183,27 @@ const SwapTab = () => {
             />
             <input
               type="number"
-              className="input-box"
               value={fromAmount}
               onChange={(e) => setFromAmount(e.target.value)}
               placeholder="Amount"
             />
           </div>
-
-          <div className="swap-row">
+          <div className="swap-switch" style={{ justifyContent: "flex-end", marginBottom: 16 }}>
+            <button
+              title="Switch tokens"
+              onClick={() => {
+                const tempToken = fromToken;
+                const tempAmount = fromAmount;
+                setFromToken(toToken);
+                setToToken(tempToken);
+                setFromAmount(toAmount);
+                setToAmount(tempAmount);
+              }}
+            >
+              ⇅
+            </button>
+          </div>
+          <div className="swap-field">
             <label>To:</label>
             <TokenSelector
               selectedToken={toToken}
@@ -201,16 +211,10 @@ const SwapTab = () => {
               tokenAddresses={tokenAddresses}
               balances={balances}
             />
-            <input
-              type="text"
-              className="input-box"
-              value={toAmount}
-              readOnly
-              placeholder="Estimated amount"
-            />
+            <input type="text" value={toAmount} readOnly placeholder="Estimated amount" />
           </div>
-
           <button
+            className="swap-button"
             onClick={executeSwap}
             disabled={isSwapping || !fromAmount || !toAmount}
           >
