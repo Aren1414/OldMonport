@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 
-const tokenAddresses = [
-  '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', // Native token (Monad)
+const TOKEN_LIST = [
   '0xb2f82D0f38dc453D596Ad40A37799446Cc89274A',
   '0xE0590015A873bF326bd645c3E1266d4db41C4E6B',
   '0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50',
@@ -13,237 +12,247 @@ const tokenAddresses = [
   '0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d'
 ];
 
-const erc20ABI = [
-  "function symbol() view returns (string)",
-  "function decimals() view returns (uint8)",
-  "function balanceOf(address) view returns (uint256)",
-  "function approve(address spender, uint256 amount) returns (bool)"
+const ERC20_ABI = [
+  'function symbol() view returns (string)',
+  'function decimals() view returns (uint8)',
+  'function balanceOf(address) view returns (uint256)'
 ];
 
-const SwapTab = ({ provider, signer, account }) => {
-  const [tokenList, setTokenList] = useState([]);
-  const [fromToken, setFromToken] = useState('');
-  const [toToken, setToToken] = useState('');
-  const [fromAmount, setFromAmount] = useState('');
-  const [toAmount, setToAmount] = useState('');
+function SwapTab() {
+  const [provider, setProvider] = useState(null);
+  const [signer, setSigner] = useState(null);
+  const [account, setAccount] = useState(null);
+
+  const [tokenFrom, setTokenFrom] = useState(TOKEN_LIST[0]);
+  const [tokenTo, setTokenTo] = useState(TOKEN_LIST[1]);
+
+  const [amountFrom, setAmountFrom] = useState('');
+  const [amountTo, setAmountTo] = useState('');
+
   const [balances, setBalances] = useState({});
+  const [symbols, setSymbols] = useState({});
+  const [decimalsMap, setDecimalsMap] = useState({});
+
   const [loadingQuote, setLoadingQuote] = useState(false);
-  const [swapLoading, setSwapLoading] = useState(false);
+  const [swapInProgress, setSwapInProgress] = useState(false);
 
   useEffect(() => {
-    const fetchTokens = async () => {
-      if (!provider || !account) return;
+    if (window.ethereum) {
+      const ethProvider = new ethers.providers.Web3Provider(window.ethereum);
+      setProvider(ethProvider);
 
-      const tokens = await Promise.all(
-        tokenAddresses.map(async (address) => {
-          if (address.toLowerCase() === '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee') {
-            const balance = await provider.getBalance(account);
-            return {
-              address,
-              symbol: 'MONAD',
-              decimals: 18,
-              balance
-            };
-          } else {
-            const contract = new ethers.Contract(address, erc20ABI, provider);
-            try {
-              const [symbol, decimals, balance] = await Promise.all([
-                contract.symbol(),
-                contract.decimals(),
-                contract.balanceOf(account)
-              ]);
-              return {
-                address,
-                symbol,
-                decimals,
-                balance
-              };
-            } catch {
-              return null;
-            }
-          }
+      ethProvider.send('eth_requestAccounts', [])
+        .then(accounts => {
+          setAccount(accounts[0]);
+          setSigner(ethProvider.getSigner());
         })
-      );
-
-      setTokenList(tokens.filter(Boolean));
-      const balancesObj = {};
-      tokens.forEach(token => {
-        if(token) balancesObj[token.address] = token.balance;
-      });
-      setBalances(balancesObj);
-
-      // Set defaults
-      if(tokens.length > 1){
-        setFromToken(tokens[0].address);
-        setToToken(tokens[1].address);
-      }
-    };
-
-    fetchTokens();
-  }, [provider, account]);
-
-  const handleGetQuote = async (amount, fromAddr, toAddr) => {
-    if (!amount || !fromAddr || !toAddr) {
-      setToAmount('');
-      return;
+        .catch(console.error);
     }
-    setLoadingQuote(true);
-    try {
-      const formattedAmount = ethers.utils.parseUnits(amount, tokenList.find(t => t.address === fromAddr).decimals).toString();
+  }, []);
 
-      const url = `https://api.0x.org/swap/v1/quote?buyToken=${toAddr}&sellToken=${fromAddr}&sellAmount=${formattedAmount}`;
+  useEffect(() => {
+    if (!provider || !account) return;
 
-      const response = await fetch(url);
-      if(!response.ok) {
-        setToAmount('');
-        setLoadingQuote(false);
-        return;
-      }
-      const data = await response.json();
+    async function fetchTokensData() {
+      const newBalances = {};
+      const newSymbols = {};
+      const newDecimals = {};
 
-      // convert buyAmount to human readable
-      const buyToken = tokenList.find(t => t.address.toLowerCase() === toAddr.toLowerCase());
-      if(buyToken){
-        const buyAmountReadable = ethers.utils.formatUnits(data.buyAmount, buyToken.decimals);
-        setToAmount(buyAmountReadable);
-      } else {
-        setToAmount('');
-      }
-    } catch {
-      setToAmount('');
-    }
-    setLoadingQuote(false);
-  };
+      for (const tokenAddress of TOKEN_LIST) {
+        try {
+          const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
 
-  const handleSwap = async () => {
-    if(!signer) return;
+          const symbol = await tokenContract.symbol();
+          const decimals = await tokenContract.decimals();
+          const rawBalance = await tokenContract.balanceOf(account);
 
-    setSwapLoading(true);
-    try {
-      const fromTokenData = tokenList.find(t => t.address === fromToken);
-      const toTokenData = tokenList.find(t => t.address === toToken);
-
-      if(!fromTokenData || !toTokenData) {
-        setSwapLoading(false);
-        return;
-      }
-
-      const sellAmount = ethers.utils.parseUnits(fromAmount, fromTokenData.decimals);
-
-      // 0x API Quote to get data for swap transaction
-      const url = `https://api.0x.org/swap/v1/quote?buyToken=${toToken}&sellToken=${fromToken}&sellAmount=${sellAmount.toString()}`;
-      const response = await fetch(url);
-      const data = await response.json();
-
-      // Approve token if not native MONAD
-      if(fromToken.toLowerCase() !== '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee'){
-        const tokenContract = new ethers.Contract(fromToken, erc20ABI, signer);
-        const allowance = await tokenContract.allowance(account, data.allowanceTarget);
-        if(allowance.lt(sellAmount)) {
-          const approveTx = await tokenContract.approve(data.allowanceTarget, sellAmount);
-          await approveTx.wait();
+          const formattedBalance = Number(ethers.utils.formatUnits(rawBalance, decimals));
+          newBalances[tokenAddress] = formattedBalance;
+          newSymbols[tokenAddress] = symbol;
+          newDecimals[tokenAddress] = decimals;
+        } catch {
+          newBalances[tokenAddress] = 0;
+          newSymbols[tokenAddress] = 'N/A';
+          newDecimals[tokenAddress] = 18;
         }
       }
 
-      // Send swap transaction
+      setBalances(newBalances);
+      setSymbols(newSymbols);
+      setDecimalsMap(newDecimals);
+    }
+
+    fetchTokensData();
+  }, [provider, account]);
+
+  useEffect(() => {
+    if (!amountFrom || isNaN(amountFrom) || Number(amountFrom) <= 0) {
+      setAmountTo('');
+      return;
+    }
+
+    async function getQuote() {
+      if (!tokenFrom || !tokenTo) {
+        setAmountTo('');
+        return;
+      }
+
+      setLoadingQuote(true);
+
+      try {
+        const sellDecimals = decimalsMap[tokenFrom] ?? 18;
+        const sellAmount = ethers.utils.parseUnits(amountFrom, sellDecimals).toString();
+
+        const apiKey = process.env.NEXT_PUBLIC_ZEROX_API_KEY || '';
+
+        const url = `https://api.0x.org/swap/v1/quote?buyToken=${tokenTo}&sellToken=${tokenFrom}&sellAmount=${sellAmount}`;
+
+        const res = await fetch(url, {
+          headers: {
+            '0x-api-key': apiKey
+          }
+        });
+
+        if (!res.ok) {
+          setAmountTo('');
+          setLoadingQuote(false);
+          return;
+        }
+
+        const data = await res.json();
+        const buyDecimals = decimalsMap[tokenTo] ?? 18;
+
+        const buyAmount = ethers.utils.formatUnits(data.buyAmount, buyDecimals);
+        setAmountTo(buyAmount);
+      } catch {
+        setAmountTo('');
+      } finally {
+        setLoadingQuote(false);
+      }
+    }
+
+    getQuote();
+  }, [amountFrom, tokenFrom, tokenTo, decimalsMap]);
+
+  function switchTokens() {
+    setTokenFrom(tokenTo);
+    setTokenTo(tokenFrom);
+    setAmountFrom('');
+    setAmountTo('');
+  }
+
+  async function executeSwap() {
+    if (!signer) return;
+    if (!amountFrom || Number(amountFrom) <= 0) return;
+
+    setSwapInProgress(true);
+
+    try {
+      const sellDecimals = decimalsMap[tokenFrom] ?? 18;
+      const sellAmount = ethers.utils.parseUnits(amountFrom, sellDecimals).toString();
+
+      const apiKey = process.env.NEXT_PUBLIC_ZEROX_API_KEY || '';
+
+      const url = `https://api.0x.org/swap/v1/quote?buyToken=${tokenTo}&sellToken=${tokenFrom}&sellAmount=${sellAmount}`;
+
+      const res = await fetch(url, {
+        headers: {
+          '0x-api-key': apiKey
+        }
+      });
+
+      if (!res.ok) {
+        alert('Failed to fetch swap quote');
+        setSwapInProgress(false);
+        return;
+      }
+
+      const quote = await res.json();
+
       const tx = await signer.sendTransaction({
-        to: data.to,
-        data: data.data,
-        value: data.value ? ethers.BigNumber.from(data.value) : ethers.BigNumber.from(0),
-        gasPrice: data.gasPrice ? ethers.BigNumber.from(data.gasPrice) : undefined,
-        gasLimit: ethers.BigNumber.from(500000)
+        to: quote.to,
+        data: quote.data,
+        value: ethers.BigNumber.from(quote.value || '0'),
+        gasPrice: ethers.BigNumber.from(quote.gasPrice || '0'),
+        gasLimit: ethers.BigNumber.from(quote.gas || '0'),
       });
 
       await tx.wait();
-      alert('Swap successful');
-      setFromAmount('');
-      setToAmount('');
-      setSwapLoading(false);
+      alert('Swap completed successfully');
     } catch (error) {
-      console.error(error);
-      alert('Swap failed: ' + (error.message || error));
-      setSwapLoading(false);
+      alert(`Swap failed: ${error.message}`);
+    } finally {
+      setSwapInProgress(false);
     }
-  };
-
-  const handleFromAmountChange = (e) => {
-    const val = e.target.value;
-    setFromAmount(val);
-    handleGetQuote(val, fromToken, toToken);
-  };
-
-  const handleFromTokenChange = (e) => {
-    setFromToken(e.target.value);
-    setFromAmount('');
-    setToAmount('');
-  };
-
-  const handleToTokenChange = (e) => {
-    setToToken(e.target.value);
-    setFromAmount('');
-    setToAmount('');
-  };
-
-  const handleSwitchTokens = () => {
-    const temp = fromToken;
-    setFromToken(toToken);
-    setToToken(temp);
-    setFromAmount('');
-    setToAmount('');
-  };
+  }
 
   return (
-    <div className="swap-tab">
-      <h2>Swap Tokens</h2>
+    <div className="swap-tab-container">
+      <h2>Token Swap</h2>
 
-      <div className="swap-field">
-        <label>From Token</label>
-        <select className="token-select" value={fromToken} onChange={handleFromTokenChange}>
-          {tokenList.map(token => (
-            <option key={token.address} value={token.address}>
-              {token.symbol} (Balance: {ethers.utils.formatUnits(balances[token.address] || 0, token.decimals)})
+      <div className="swap-row">
+        <label htmlFor="tokenFrom">From</label>
+        <select
+          id="tokenFrom"
+          value={tokenFrom}
+          onChange={(e) => setTokenFrom(e.target.value)}
+        >
+          {TOKEN_LIST.map((addr) => (
+            <option key={addr} value={addr}>
+              {symbols[addr] || addr} - Balance: {balances[addr] !== undefined ? balances[addr].toFixed(4) : '0'}
             </option>
           ))}
         </select>
+
         <input
           type="number"
-          placeholder="Amount to swap"
-          value={fromAmount}
-          onChange={handleFromAmountChange}
+          placeholder="Amount"
+          value={amountFrom}
           min="0"
-        />
-      </div>
-
-      <div className="swap-switch">
-        <button onClick={handleSwitchTokens} title="Switch tokens">⇄</button>
-      </div>
-
-      <div className="swap-field">
-        <label>To Token</label>
-        <select className="token-select" value={toToken} onChange={handleToTokenChange}>
-          {tokenList.map(token => (
-            <option key={token.address} value={token.address}>
-              {token.symbol} (Balance: {ethers.utils.formatUnits(balances[token.address] || 0, token.decimals)})
-            </option>
-          ))}
-        </select>
-        <input
-          type="text"
-          placeholder="Estimated amount"
-          value={loadingQuote ? 'Loading...' : toAmount}
-          readOnly
+          onChange={(e) => setAmountFrom(e.target.value)}
         />
       </div>
 
       <button
-        className="swap-button"
-        onClick={handleSwap}
-        disabled={swapLoading || !fromAmount || fromToken === toToken}
+        className="switch-button"
+        onClick={switchTokens}
+        aria-label="Switch tokens"
       >
-        {swapLoading ? 'Swapping...' : 'Swap'}
+        &#8646;
+      </button>
+
+      <div className="swap-row">
+        <label htmlFor="tokenTo">To</label>
+        <select
+          id="tokenTo"
+          value={tokenTo}
+          onChange={(e) => setTokenTo(e.target.value)}
+        >
+          {TOKEN_LIST.map((addr) => (
+            <option key={addr} value={addr}>
+              {symbols[addr] || addr} - Balance: {balances[addr] !== undefined ? balances[addr].toFixed(4) : '0'}
+            </option>
+          ))}
+        </select>
+
+        <input
+          type="text"
+          placeholder={loadingQuote ? 'Loading...' : 'Estimated Amount'}
+          value={amountTo}
+          readOnly
+          disabled
+        />
+      </div>
+
+      <button
+        className="swap-submit-button"
+        onClick={executeSwap}
+        disabled={swapInProgress || loadingQuote || !account}
+      >
+        {swapInProgress ? 'Swapping...' : 'Swap'}
       </button>
     </div>
   );
-};
+}
 
 export default SwapTab;
