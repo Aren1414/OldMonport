@@ -1,255 +1,63 @@
-import React, { useEffect, useState } from "react";
-import { ethers } from "ethers";
-import TokenSelector from "./TokenSelector";
-import ERC20_ABI from "../abis/ERC20.json";
+import React, { useState, useEffect } from 'react'; import { ethers } from 'ethers'; import erc20ABI from './erc20ABI.json'; import { getWalletAddress, getProvider, switchToMonadTestnet } from './wallet';
 
-const MONAD_RPC = "https://rpc.testnet.monad.xyz";
-const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+const TOKEN_ADDRESSES = [ '0xb2f82D0f38dc453D596Ad40A37799446Cc89274A', '0xE0590015A873bF326bd645c3E1266d4db41C4E6B', '0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50', '0x0F0BDEbF0F83cD1EE3974779Bcb7315f9808c714', '0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701', '0xf817257fed379853cDe0fa4F97AB987181B1E5Ea', '0xB5a30b0FDc5EA94A52fDc42e3E9760Cb8449Fb37', '0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d' ];
 
-const tokenAddresses = [
-  "0xb2f82D0f38dc453D596Ad40A37799446Cc89274A",
-  "0xE0590015A873bF326bd645c3E1266d4db41C4E6B",
-  "0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50",
-  "0x0F0BDEbF0F83cD1EE3974779bcb7315f9808c714",
-  "0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701",
-  "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea",
-  "0xB5a30b0FDc5EA94A52fDc42e3E9760Cb8449Fb37",
-  "0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d"
-];
+const NATIVE_TOKEN = { address: '0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE', symbol: 'MONAD', decimals: 18 };
 
-const SwapTab = () => {
-  const [provider, setProvider] = useState(null);
-  const [signer, setSigner] = useState(null);
-  const [account, setAccount] = useState("");
-  const [balances, setBalances] = useState({});
-  const [fromToken, setFromToken] = useState("");
-  const [toToken, setToToken] = useState("");
-  const [fromAmount, setFromAmount] = useState("");
-  const [toAmount, setToAmount] = useState("");
-  const [isSwapping, setIsSwapping] = useState(false);
+export default function SwapTab() { const [walletAddress, setWalletAddress] = useState(''); const [tokenList, setTokenList] = useState([]); const [fromToken, setFromToken] = useState(NATIVE_TOKEN.address); const [toToken, setToToken] = useState(''); const [fromAmount, setFromAmount] = useState(''); const [toAmount, setToAmount] = useState(''); const [balances, setBalances] = useState({});
 
-  useEffect(() => {
-    if (window.ethereum) {
-      const ethProvider = new ethers.providers.Web3Provider(window.ethereum);
-      setProvider(ethProvider);
-      ethProvider.getSigner().then(setSigner);
-    }
-  }, []);
+useEffect(() => { async function init() { await switchToMonadTestnet(); const addr = await getWalletAddress(); setWalletAddress(addr); await loadTokenList(addr); } init(); }, []);
 
-  const connectWallet = async () => {
-    if (!window.ethereum) return alert("Please install a wallet");
-    try {
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-      setAccount(accounts[0]);
-      const ethProvider = new ethers.providers.Web3Provider(window.ethereum);
-      setProvider(ethProvider);
-      setSigner(ethProvider.getSigner());
-      await switchToMonadNetwork();
-      fetchBalances(accounts[0]);
-    } catch {
-      alert("Wallet connection failed");
-    }
-  };
+async function loadTokenList(user) { const provider = getProvider(); const list = [NATIVE_TOKEN]; for (let address of TOKEN_ADDRESSES) { const contract = new ethers.Contract(address, erc20ABI, provider); try { const symbol = await contract.symbol(); const decimals = await contract.decimals(); const balance = await contract.balanceOf(user); list.push({ address, symbol, decimals }); setBalances(prev => ({ ...prev, [address]: ethers.utils.formatUnits(balance, decimals) })); } catch (e) { console.error('Error loading token', address, e); } } const nativeBalance = await provider.getBalance(user); setBalances(prev => ({ ...prev, [NATIVE_TOKEN.address]: ethers.utils.formatEther(nativeBalance) })); setTokenList(list); }
 
-  const switchToMonadNetwork = async () => {
-    if (!window.ethereum) return;
-    try {
-      await window.ethereum.request({
-        method: "wallet_switchEthereumChain",
-        params: [{ chainId: "0x506" }]
-      });
-    } catch (switchError) {
-      if (switchError.code === 4902) {
-        try {
-          await window.ethereum.request({
-            method: "wallet_addEthereumChain",
-            params: [{
-              chainId: "0x506",
-              chainName: "Monad Testnet",
-              nativeCurrency: { name: "MON", symbol: "MON", decimals: 18 },
-              rpcUrls: [MONAD_RPC],
-              blockExplorerUrls: ["https://testnet.monadscan.io"]
-            }]
-          });
-        } catch (addError) {
-          console.error("Add network error:", addError);
-        }
-      }
-    }
-  };
+function handleSwitchTokens() { const temp = fromToken; setFromToken(toToken); setToToken(temp); const tempAmount = fromAmount; setFromAmount(toAmount); setToAmount(tempAmount); }
 
-  const fetchBalances = async (userAddress) => {
-    if (!provider) return;
-    const newBalances = {};
-    for (const address of tokenAddresses) {
-      if (address === ZERO_ADDRESS) {
-        const bal = await provider.getBalance(userAddress);
-        newBalances[ZERO_ADDRESS] = parseFloat(ethers.utils.formatEther(bal));
-      } else {
-        try {
-          const contract = new ethers.Contract(address, ERC20_ABI, provider);
-          const bal = await contract.balanceOf(userAddress);
-          newBalances[address] = parseFloat(ethers.utils.formatUnits(bal, 18));
-        } catch {
-          newBalances[address] = 0;
-        }
-      }
-    }
-    setBalances(newBalances);
-  };
+return ( <div className="swap-tab"> <h2>Token Swap</h2>
 
-  useEffect(() => {
-    const calculateSwap = async () => {
-      if (!fromToken || !toToken || !fromAmount || isNaN(fromAmount) || Number(fromAmount) <= 0) {
-        setToAmount("");
-        return;
-      }
-      if (!account) return;
+<div className="swap-field">
+    <select
+      className="token-select"
+      value={fromToken}
+      onChange={e => setFromToken(e.target.value)}>
+      {tokenList.map(token => (
+        <option key={token.address} value={token.address}>
+          {token.symbol} - {balances[token.address] || '0'}
+        </option>
+      ))}
+    </select>
+    <input
+      type="number"
+      placeholder="Enter amount"
+      value={fromAmount}
+      onChange={e => setFromAmount(e.target.value)}
+    />
+  </div>
 
-      try {
-        const fromAddress = fromToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : fromToken;
-        const toAddress = toToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : toToken;
-        const amount = ethers.utils.parseUnits(fromAmount, 18).toString();
-        const url = `https://api.0x.org/swap/v1/price?sellToken=${fromAddress}&buyToken=${toAddress}&sellAmount=${amount}`;
-        const res = await fetch(url);
-        const data = await res.json();
+  <div className="swap-switch">
+    <button onClick={handleSwitchTokens}>⇅</button>
+  </div>
 
-        if (data && data.buyAmount) {
-          setToAmount(ethers.utils.formatUnits(data.buyAmount, 18));
-        } else {
-          setToAmount("");
-        }
-      } catch {
-        setToAmount("");
-      }
-    };
+  <div className="swap-field">
+    <select
+      className="token-select"
+      value={toToken}
+      onChange={e => setToToken(e.target.value)}>
+      {tokenList.map(token => (
+        <option key={token.address} value={token.address}>
+          {token.symbol} - {balances[token.address] || '0'}
+        </option>
+      ))}
+    </select>
+    <input
+      type="text"
+      value={toAmount}
+      placeholder="Estimated amount"
+      disabled
+    />
+  </div>
 
-    calculateSwap();
-  }, [fromToken, toToken, fromAmount, account]);
+  <button className="swap-button">Swap</button>
+</div>
 
-  const executeSwap = async () => {
-    if (!signer) return alert("Connect wallet first");
-    if (!fromToken || !toToken || !fromAmount) return alert("Fill all fields");
+); }
 
-    setIsSwapping(true);
-
-    try {
-      const fromAddress = fromToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : fromToken;
-      const toAddress = toToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : toToken;
-      const amount = ethers.utils.parseUnits(fromAmount, 18).toString();
-
-      const url = `https://api.0x.org/swap/v1/quote?sellToken=${fromAddress}&buyToken=${toAddress}&sellAmount=${amount}&takerAddress=${account}`;
-      const res = await fetch(url);
-      const data = await res.json();
-
-      if (!data || !data.to || !data.data) {
-        alert("Swap quote error");
-        setIsSwapping(false);
-        return;
-      }
-
-      const tx = {
-        to: data.to,
-        data: data.data,
-        value: data.value ? ethers.BigNumber.from(data.value) : undefined,
-        gasPrice: data.gasPrice ? ethers.BigNumber.from(data.gasPrice) : undefined
-      };
-
-      const txResponse = await signer.sendTransaction(tx);
-      await txResponse.wait();
-
-      alert("Swap successful");
-      fetchBalances(account);
-      setFromAmount("");
-      setToAmount("");
-    } catch (error) {
-      alert("Swap failed: " + error.message);
-    } finally {
-      setIsSwapping(false);
-    }
-  };
-
-  return (
-    <div className="swap-tab" style={{ maxWidth: 400, margin: "0 auto", padding: 20 }}>
-      {!account ? (
-        <button onClick={connectWallet} style={{ width: "100%", padding: 12, fontSize: 16 }}>Connect Wallet</button>
-      ) : (
-        <>
-          <div style={{ marginBottom: 20 }}>
-            <label>From</label>
-            <TokenSelector
-              selectedToken={fromToken}
-              onSelectToken={setFromToken}
-              tokenAddresses={tokenAddresses}
-              balances={balances}
-            />
-            <input
-              type="number"
-              value={fromAmount}
-              onChange={(e) => setFromAmount(e.target.value)}
-              placeholder="Amount"
-              style={{ width: "100%", padding: 10, fontSize: 16, marginTop: 6 }}
-            />
-          </div>
-
-          <div
-            style={{
-              textAlign: "center",
-              margin: "10px 0",
-              cursor: "pointer",
-              fontSize: 24,
-              userSelect: "none"
-            }}
-            onClick={() => {
-              const tempToken = fromToken;
-              const tempAmount = fromAmount;
-              setFromToken(toToken);
-              setToToken(tempToken);
-              setFromAmount(toAmount);
-              setToAmount(tempAmount);
-            }}
-            title="Switch tokens"
-          >
-            &#8646;
-          </div>
-
-          <div style={{ marginBottom: 20 }}>
-            <label>To</label>
-            <TokenSelector
-              selectedToken={toToken}
-              onSelectToken={setToToken}
-              tokenAddresses={tokenAddresses}
-              balances={balances}
-            />
-            <input
-              type="text"
-              value={toAmount}
-              readOnly
-              placeholder="Estimated amount"
-              style={{ width: "100%", padding: 10, fontSize: 16, marginTop: 6, backgroundColor: "#eee" }}
-            />
-          </div>
-
-          <button
-            onClick={executeSwap}
-            disabled={isSwapping || !fromAmount || !toAmount}
-            style={{
-              width: "100%",
-              padding: 14,
-              fontSize: 18,
-              backgroundColor: isSwapping || !fromAmount || !toAmount ? "#aaa" : "#007bff",
-              color: "white",
-              border: "none",
-              borderRadius: 6,
-              cursor: isSwapping || !fromAmount || !toAmount ? "not-allowed" : "pointer"
-            }}
-          >
-            {isSwapping ? "Swapping..." : "Swap"}
-          </button>
-        </>
-      )}
-    </div>
-  );
-};
-
-export default SwapTab;
