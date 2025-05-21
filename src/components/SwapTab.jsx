@@ -105,11 +105,11 @@ const SwapTab = () => {
         return;
       }
       if (!account) return;
+
       try {
         const fromAddress = fromToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : fromToken;
         const toAddress = toToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : toToken;
         const amount = ethers.utils.parseUnits(fromAmount, 18).toString();
-
         const url = `https://api.0x.org/swap/v1/price?sellToken=${fromAddress}&buyToken=${toAddress}&sellAmount=${amount}`;
         const res = await fetch(url);
         const data = await res.json();
@@ -123,13 +123,16 @@ const SwapTab = () => {
         setToAmount("");
       }
     };
+
     calculateSwap();
   }, [fromToken, toToken, fromAmount, account]);
 
   const executeSwap = async () => {
     if (!signer) return alert("Connect wallet first");
     if (!fromToken || !toToken || !fromAmount) return alert("Fill all fields");
+
     setIsSwapping(true);
+
     try {
       const fromAddress = fromToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : fromToken;
       const toAddress = toToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : toToken;
@@ -154,6 +157,7 @@ const SwapTab = () => {
 
       const txResponse = await signer.sendTransaction(tx);
       await txResponse.wait();
+
       alert("Swap successful");
       fetchBalances(account);
       setFromAmount("");
@@ -166,15 +170,13 @@ const SwapTab = () => {
   };
 
   return (
-    <div className="swap-tab">
+    <div className="swap-tab" style={{ maxWidth: 400, margin: "0 auto", padding: 20 }}>
       {!account ? (
-        <button className="swap-button" onClick={connectWallet}>
-          Connect Wallet
-        </button>
+        <button onClick={connectWallet} style={{ width: "100%", padding: 12, fontSize: 16 }}>Connect Wallet</button>
       ) : (
         <>
-          <div className="swap-field">
-            <label>From:</label>
+          <div style={{ marginBottom: 20 }}>
+            <label>From</label>
             <TokenSelector
               selectedToken={fromToken}
               onSelectToken={setFromToken}
@@ -186,37 +188,61 @@ const SwapTab = () => {
               value={fromAmount}
               onChange={(e) => setFromAmount(e.target.value)}
               placeholder="Amount"
+              style={{ width: "100%", padding: 10, fontSize: 16, marginTop: 6 }}
             />
           </div>
-          <div className="swap-switch" style={{ justifyContent: "flex-end", marginBottom: 16 }}>
-            <button
-              title="Switch tokens"
-              onClick={() => {
-                const tempToken = fromToken;
-                const tempAmount = fromAmount;
-                setFromToken(toToken);
-                setToToken(tempToken);
-                setFromAmount(toAmount);
-                setToAmount(tempAmount);
-              }}
-            >
-              ⇅
-            </button>
+
+          <div
+            style={{
+              textAlign: "center",
+              margin: "10px 0",
+              cursor: "pointer",
+              fontSize: 24,
+              userSelect: "none"
+            }}
+            onClick={() => {
+              const tempToken = fromToken;
+              const tempAmount = fromAmount;
+              setFromToken(toToken);
+              setToToken(tempToken);
+              setFromAmount(toAmount);
+              setToAmount(tempAmount);
+            }}
+            title="Switch tokens"
+          >
+            &#8646;
           </div>
-          <div className="swap-field">
-            <label>To:</label>
+
+          <div style={{ marginBottom: 20 }}>
+            <label>To</label>
             <TokenSelector
               selectedToken={toToken}
               onSelectToken={setToToken}
               tokenAddresses={tokenAddresses}
               balances={balances}
             />
-            <input type="text" value={toAmount} readOnly placeholder="Estimated amount" />
+            <input
+              type="text"
+              value={toAmount}
+              readOnly
+              placeholder="Estimated amount"
+              style={{ width: "100%", padding: 10, fontSize: 16, marginTop: 6, backgroundColor: "#eee" }}
+            />
           </div>
+
           <button
-            className="swap-button"
             onClick={executeSwap}
             disabled={isSwapping || !fromAmount || !toAmount}
+            style={{
+              width: "100%",
+              padding: 14,
+              fontSize: 18,
+              backgroundColor: isSwapping || !fromAmount || !toAmount ? "#aaa" : "#007bff",
+              color: "white",
+              border: "none",
+              borderRadius: 6,
+              cursor: isSwapping || !fromAmount || !toAmount ? "not-allowed" : "pointer"
+            }}
           >
             {isSwapping ? "Swapping..." : "Swap"}
           </button>
