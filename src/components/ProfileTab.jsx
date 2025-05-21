@@ -20,9 +20,9 @@ const ProfileTab = () => {
   const fetchBalance = async () => {
     if (!walletAddress) return;
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
       const bal = await provider.getBalance(walletAddress);
-      setBalance(ethers.formatEther(bal));
+      setBalance(ethers.utils.formatEther(bal));
     } catch (e) {
       console.error("Balance fetch error:", e);
     }
