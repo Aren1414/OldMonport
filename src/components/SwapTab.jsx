@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { connectWallet, getWalletAddress } from "../wallet";
+import { connectWallet, getWalletAddress } from "../utils/wallet";
 import TokenSelector from "./TokenSelector";
 import ERC20_ABI from "../abis/ERC20.json";
 
