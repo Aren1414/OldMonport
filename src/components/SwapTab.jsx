@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from "react";
-import { ethers, Contract } from "ethers";
+import { ethers } from "ethers";
 import TokenSelector from "./TokenSelector";
 import ERC20_ABI from "../abis/ERC20.json";
 
 const MONAD_RPC = "https://rpc.testnet.monad.xyz";
-const ZERO_ADDRESS = ethers.ZeroAddress;
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
 const tokenAddresses = [
   "0xb2f82D0f38dc453D596Ad40A37799446Cc89274A",
@@ -29,10 +29,11 @@ const SwapTab = () => {
   const [isSwapping, setIsSwapping] = useState(false);
 
   useEffect(() => {
-    if (!window.ethereum) return;
-    const ethProvider = new ethers.BrowserProvider(window.ethereum);
-    setProvider(ethProvider);
-    ethProvider.getSigner().then(setSigner);
+    if (window.ethereum) {
+      const ethProvider = new ethers.providers.Web3Provider(window.ethereum);
+      setProvider(ethProvider);
+      ethProvider.getSigner().then(setSigner);
+    }
   }, []);
 
   const connectWallet = async () => {
@@ -40,9 +41,9 @@ const SwapTab = () => {
     try {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       setAccount(accounts[0]);
-      const ethProvider = new ethers.BrowserProvider(window.ethereum);
+      const ethProvider = new ethers.providers.Web3Provider(window.ethereum);
       setProvider(ethProvider);
-      setSigner(await ethProvider.getSigner());
+      setSigner(ethProvider.getSigner());
       await switchToMonadNetwork();
       fetchBalances(accounts[0]);
     } catch (e) {
@@ -83,12 +84,12 @@ const SwapTab = () => {
     for (const address of tokenAddresses) {
       if (address === ZERO_ADDRESS) {
         const bal = await provider.getBalance(userAddress);
-        newBalances[ZERO_ADDRESS] = Number(ethers.formatEther(bal));
+        newBalances[ZERO_ADDRESS] = parseFloat(ethers.utils.formatEther(bal));
       } else {
         try {
-          const contract = new Contract(address, ERC20_ABI, provider);
+          const contract = new ethers.Contract(address, ERC20_ABI, provider);
           const bal = await contract.balanceOf(userAddress);
-          newBalances[address] = Number(ethers.formatUnits(bal, 18));
+          newBalances[address] = parseFloat(ethers.utils.formatUnits(bal, 18));
         } catch {
           newBalances[address] = 0;
         }
@@ -106,16 +107,16 @@ const SwapTab = () => {
       if (!account) return;
 
       try {
-        const fromTokenAddress = fromToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : fromToken;
-        const toTokenAddress = toToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : toToken;
+        const fromAddress = fromToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : fromToken;
+        const toAddress = toToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : toToken;
+        const amount = ethers.utils.parseUnits(fromAmount, 18).toString();
 
-        const url = `https://api.0x.org/swap/v1/price?sellToken=${fromTokenAddress}&buyToken=${toTokenAddress}&sellAmount=${ethers.parseUnits(fromAmount, 18).toString()}`;
-
-        const response = await fetch(url);
-        const data = await response.json();
+        const url = `https://api.0x.org/swap/v1/price?sellToken=${fromAddress}&buyToken=${toAddress}&sellAmount=${amount}`;
+        const res = await fetch(url);
+        const data = await res.json();
 
         if (data && data.buyAmount) {
-          setToAmount(ethers.formatUnits(data.buyAmount, 18));
+          setToAmount(ethers.utils.formatUnits(data.buyAmount, 18));
         } else {
           setToAmount("");
         }
@@ -134,13 +135,13 @@ const SwapTab = () => {
     setIsSwapping(true);
 
     try {
-      const fromTokenAddress = fromToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : fromToken;
-      const toTokenAddress = toToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : toToken;
+      const fromAddress = fromToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : fromToken;
+      const toAddress = toToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : toToken;
+      const amount = ethers.utils.parseUnits(fromAmount, 18).toString();
 
-      const url = `https://api.0x.org/swap/v1/quote?sellToken=${fromTokenAddress}&buyToken=${toTokenAddress}&sellAmount=${ethers.parseUnits(fromAmount, 18).toString()}&takerAddress=${account}`;
-
-      const response = await fetch(url);
-      const data = await response.json();
+      const url = `https://api.0x.org/swap/v1/quote?sellToken=${fromAddress}&buyToken=${toAddress}&sellAmount=${amount}&takerAddress=${account}`;
+      const res = await fetch(url);
+      const data = await res.json();
 
       if (!data || !data.to || !data.data) {
         alert("Swap quote error");
@@ -151,8 +152,8 @@ const SwapTab = () => {
       const tx = {
         to: data.to,
         data: data.data,
-        value: data.value ? ethers.parseEther(data.value) : undefined,
-        gasPrice: data.gasPrice ? ethers.parseUnits(data.gasPrice, "gwei") : undefined
+        value: data.value ? ethers.BigNumber.from(data.value) : undefined,
+        gasPrice: data.gasPrice ? ethers.BigNumber.from(data.gasPrice) : undefined
       };
 
       const txResponse = await signer.sendTransaction(tx);
