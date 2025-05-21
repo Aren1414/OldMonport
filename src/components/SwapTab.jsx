@@ -1,285 +1,160 @@
-import React, { useState, useEffect } from 'react';
-import { ethers } from 'ethers';
+import React, { useEffect, useState } from "react";
+import { ethers } from "ethers";
+import { connectWallet, getWalletAddress } from "../wallet";
+import TokenSelector from "./TokenSelector";
+import ERC20_ABI from "../abis/ERC20.json";
 
-const TOKEN_ADDRESSES = [
-  '0xYourMonadTokenAddressHere',   // Replace with actual Monad token address
-  '0xb2f82D0f38dc453D596Ad40A37799446Cc89274A',
-  '0xE0590015A873bF326bd645c3E1266d4db41C4E6B',
-  '0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50',
-  '0x0F0BDEbF0F83cD1EE3974779Bcb7315f9808c714',
-  '0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701',
-  '0xf817257fed379853cDe0fa4F97AB987181B1E5Ea',
-  '0xB5a30b0FDc5EA94A52fDc42e3E9760Cb8449Fb37',
-  '0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d'
+const tokenAddresses = [
+  "0x0000000000000000000000000000000000000000", // MON
+  "0xb2f82D0f38dc453D596Ad40A37799446Cc89274A",
+  "0xE0590015A873bF326bd645c3E1266d4db41C4E6B",
+  "0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50",
+  "0x0F0BDEbF0F83cD1EE3974779Bcb7315f9808c714",
+  "0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701",
+  "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea",
+  "0xB5a30b0FDc5EA94A52fDc42e3E9760Cb8449Fb37",
+  "0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d"
 ];
 
-// ERC20 ABI minimal for symbol, decimals, balanceOf
-const ERC20_ABI = [
-  'function symbol() view returns (string)',
-  'function decimals() view returns (uint8)',
-  'function balanceOf(address) view returns (uint256)'
-];
+const SwapTab = () => {
+  const [wallet, setWallet] = useState(null);
+  const [fromToken, setFromToken] = useState("");
+  const [toToken, setToToken] = useState("");
+  const [fromAmount, setFromAmount] = useState("");
+  const [toAmount, setToAmount] = useState("");
+  const [balances, setBalances] = useState({});
+  const [fetchingQuote, setFetchingQuote] = useState(false);
+  const [swapping, setSwapping] = useState(false);
 
-export default function SwapTab() {
-  const [provider, setProvider] = useState(null);
-  const [signer, setSigner] = useState(null);
-  const [account, setAccount] = useState(null);
-
-  const [tokensData, setTokensData] = useState({}); // { address: {symbol, decimals, balance} }
-
-  const [tokenFrom, setTokenFrom] = useState('');
-  const [tokenTo, setTokenTo] = useState('');
-  const [amountFrom, setAmountFrom] = useState('');
-  const [amountTo, setAmountTo] = useState('');
-
-  const [loadingQuote, setLoadingQuote] = useState(false);
-  const [swapInProgress, setSwapInProgress] = useState(false);
-  const [error, setError] = useState('');
-
-  // Initialize provider, signer and account on mount
   useEffect(() => {
-    if (!window.ethereum) {
-      setError('No Ethereum wallet found');
-      return;
-    }
-    const ethProvider = new ethers.providers.Web3Provider(window.ethereum);
-    setProvider(ethProvider);
-
-    ethProvider.send('eth_requestAccounts', [])
-      .then(accounts => {
-        setAccount(accounts[0]);
-        setSigner(ethProvider.getSigner());
-      })
-      .catch(() => setError('Wallet connection rejected'));
+    const connect = async () => {
+      const address = await connectWallet();
+      if (address) {
+        setWallet(address);
+        await loadBalances(address);
+      }
+    };
+    connect();
   }, []);
 
-  // Fetch symbols, decimals, balances for all tokens
   useEffect(() => {
-    if (!provider || !account) return;
-
-    async function fetchAllTokenData() {
-      const data = {};
-      for (const addr of TOKEN_ADDRESSES) {
-        try {
-          const tokenContract = new ethers.Contract(addr, ERC20_ABI, provider);
-          const [symbol, decimals, balanceRaw] = await Promise.all([
-            tokenContract.symbol(),
-            tokenContract.decimals(),
-            tokenContract.balanceOf(account)
-          ]);
-          const balance = Number(ethers.utils.formatUnits(balanceRaw, decimals));
-          data[addr] = { symbol, decimals, balance };
-        } catch {
-          // On failure, fallback to defaults
-          data[addr] = { symbol: 'UNKNOWN', decimals: 18, balance: 0 };
-        }
-      }
-      setTokensData(data);
-
-      // Initialize tokens selection if empty
-      if (!tokenFrom) setTokenFrom(TOKEN_ADDRESSES[0]);
-      if (!tokenTo) setTokenTo(TOKEN_ADDRESSES[1] || TOKEN_ADDRESSES[0]);
+    if (fromAmount && fromToken && toToken && fromToken !== toToken) {
+      fetchQuote();
+    } else {
+      setToAmount("");
     }
+  }, [fromAmount, fromToken, toToken]);
 
-    fetchAllTokenData();
-  }, [provider, account]);
+  const loadBalances = async (user) => {
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
+    const balancesObj = {};
 
-  // Filter token lists to prevent same token in both fields
-  const tokensForFrom = TOKEN_ADDRESSES.filter(addr => addr !== tokenTo);
-  const tokensForTo = TOKEN_ADDRESSES.filter(addr => addr !== tokenFrom);
-
-  // When tokenFrom, tokenTo or amountFrom changes, fetch swap quote
-  useEffect(() => {
-    if (!amountFrom || Number(amountFrom) <= 0) {
-      setAmountTo('');
-      setError('');
-      return;
-    }
-    if (!tokenFrom || !tokenTo) {
-      setAmountTo('');
-      setError('');
-      return;
-    }
-    if (tokenFrom === tokenTo) {
-      setAmountTo('');
-      setError('From and To tokens cannot be the same');
-      return;
-    }
-    if (!tokensData[tokenFrom] || !tokensData[tokenTo]) {
-      setAmountTo('');
-      setError('Token data not loaded');
-      return;
-    }
-
-    async function fetchQuote() {
-      setLoadingQuote(true);
-      setError('');
+    for (const address of tokenAddresses) {
       try {
-        const sellDecimals = tokensData[tokenFrom].decimals;
-        const sellAmount = ethers.utils.parseUnits(amountFrom, sellDecimals).toString();
-
-        const url = `https://api.0x.org/swap/v1/quote?buyToken=${tokenTo}&sellToken=${tokenFrom}&sellAmount=${sellAmount}`;
-        const res = await fetch(url);
-        if (!res.ok) {
-          const errData = await res.json().catch(() => ({}));
-          setError(errData.reason || 'Failed to fetch swap quote');
-          setAmountTo('');
-          setLoadingQuote(false);
-          return;
+        if (address === "0x0000000000000000000000000000000000000000") {
+          const balance = await provider.getBalance(user);
+          balancesObj[address] = ethers.utils.formatEther(balance);
+        } else {
+          const contract = new ethers.Contract(address, ERC20_ABI, provider);
+          const balance = await contract.balanceOf(user);
+          const decimals = await contract.decimals();
+          balancesObj[address] = ethers.utils.formatUnits(balance, decimals);
         }
-
-        const data = await res.json();
-        const buyDecimals = tokensData[tokenTo].decimals;
-        const buyAmountFormatted = ethers.utils.formatUnits(data.buyAmount, buyDecimals);
-        setAmountTo(buyAmountFormatted);
-      } catch {
-        setAmountTo('');
-        setError('Failed to fetch swap quote');
-      } finally {
-        setLoadingQuote(false);
+      } catch (err) {
+        balancesObj[address] = "0";
       }
     }
 
-    fetchQuote();
-  }, [amountFrom, tokenFrom, tokenTo, tokensData]);
+    setBalances(balancesObj);
+  };
 
-  // Swap From and To tokens
-  function swapTokenSelection() {
-    setTokenFrom(tokenTo);
-    setTokenTo(tokenFrom);
-    setAmountFrom('');
-    setAmountTo('');
-    setError('');
-  }
-
-  // Perform the swap transaction
-  async function handleSwap() {
-    setError('');
-    if (!signer) {
-      setError('Wallet not connected');
-      return;
-    }
-    if (!amountFrom || Number(amountFrom) <= 0) {
-      setError('Invalid amount');
-      return;
-    }
-    if (tokenFrom === tokenTo) {
-      setError('From and To tokens cannot be the same');
-      return;
-    }
-    if (!tokensData[tokenFrom] || !tokensData[tokenTo]) {
-      setError('Token data not loaded');
-      return;
-    }
-
-    setSwapInProgress(true);
-
+  const fetchQuote = async () => {
+    setFetchingQuote(true);
     try {
-      const sellDecimals = tokensData[tokenFrom].decimals;
-      const sellAmount = ethers.utils.parseUnits(amountFrom, sellDecimals).toString();
+      const amountIn = ethers.utils.parseUnits(fromAmount, 18).toString();
+      const url = `https://testnet.api.0x.org/swap/v2/quote?buyToken=${toToken}&sellToken=${fromToken}&sellAmount=${amountIn}`;
+      const response = await fetch(url);
+      const data = await response.json();
+      const estimated = ethers.utils.formatUnits(data.buyAmount, 18);
+      setToAmount(estimated);
+    } catch (err) {
+      console.error("Error fetching quote:", err);
+      setToAmount("0");
+    } finally {
+      setFetchingQuote(false);
+    }
+  };
 
-      const url = `https://api.0x.org/swap/v1/quote?buyToken=${tokenTo}&sellToken=${tokenFrom}&sellAmount=${sellAmount}`;
+  const executeSwap = async () => {
+    if (!wallet || !fromToken || !toToken || !fromAmount || fromToken === toToken) return;
+    setSwapping(true);
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const amountIn = ethers.utils.parseUnits(fromAmount, 18).toString();
+
+      const url = `https://testnet.api.0x.org/swap/v2/quote?buyToken=${toToken}&sellToken=${fromToken}&sellAmount=${amountIn}&takerAddress=${wallet}`;
       const res = await fetch(url);
-      if (!res.ok) {
-        const errData = await res.json().catch(() => ({}));
-        setError(errData.reason || 'Failed to fetch swap quote');
-        setSwapInProgress(false);
-        return;
-      }
+      const data = await res.json();
 
-      const quote = await res.json();
+      if (fromToken !== "0x0000000000000000000000000000000000000000") {
+        const tokenContract = new ethers.Contract(fromToken, ERC20_ABI, signer);
+        const allowance = await tokenContract.allowance(wallet, data.allowanceTarget);
+        if (allowance.lt(amountIn)) {
+          const approveTx = await tokenContract.approve(data.allowanceTarget, amountIn);
+          await approveTx.wait();
+        }
+      }
 
       const tx = await signer.sendTransaction({
-        to: quote.to,
-        data: quote.data,
-        value: ethers.BigNumber.from(quote.value || '0'),
-        gasPrice: ethers.BigNumber.from(quote.gasPrice || '0'),
-        gasLimit: ethers.BigNumber.from(quote.gas || '0')
+        to: data.to,
+        data: data.data,
+        value: data.value || "0",
+        gasLimit: data.gas || 500000
       });
-
       await tx.wait();
-
-      alert('Swap completed successfully');
-
-      // Refresh balances after swap
-      const updatedBalances = { ...tokensData };
-
-      const tokenFromContract = new ethers.Contract(tokenFrom, ERC20_ABI, provider);
-      const tokenToContract = new ethers.Contract(tokenTo, ERC20_ABI, provider);
-
-      const [balanceFromRaw, balanceToRaw] = await Promise.all([
-        tokenFromContract.balanceOf(account),
-        tokenToContract.balanceOf(account)
-      ]);
-
-      updatedBalances[tokenFrom].balance = Number(ethers.utils.formatUnits(balanceFromRaw, tokensData[tokenFrom].decimals));
-      updatedBalances[tokenTo].balance = Number(ethers.utils.formatUnits(balanceToRaw, tokensData[tokenTo].decimals));
-
-      setTokensData(updatedBalances);
-
-      setAmountFrom('');
-      setAmountTo('');
-      setError('');
-    } catch (e) {
-      setError('Swap failed: ' + (e.message || 'Unknown error'));
+      alert("Swap successful!");
+      await loadBalances(wallet);
+    } catch (err) {
+      console.error("Swap error:", err);
+      alert("Swap failed. See console for details.");
     } finally {
-      setSwapInProgress(false);
+      setSwapping(false);
     }
-  }
+  };
 
   return (
-    <div style={{ maxWidth: 400, margin: '0 auto', padding: 20 }}>
-      <h2 style={{ textAlign: 'center' }}>Swap Tokens</h2>
+    <div className="swap-container">
+      <h2>Token Swap</h2>
 
-      <div style={{ marginBottom: 20 }}>
-        <label>From Token:</label>
-        <select value={tokenFrom} onChange={e => setTokenFrom(e.target.value)}>
-          {tokensForFrom.map(addr => (
-            <option key={addr} value={addr}>
-              {tokensData[addr]?.symbol || '...'} ({tokensData[addr]?.balance?.toFixed(4) || '0'})
-            </option>
-          ))}
-        </select>
-        <input
-          type="number"
-          placeholder="Amount"
-          value={amountFrom}
-          onChange={e => setAmountFrom(e.target.value)}
-          style={{ width: '100%', marginTop: 5 }}
-        />
-      </div>
+      <label>From:</label>
+      <TokenSelector
+        selectedToken={fromToken}
+        onSelectToken={setFromToken}
+        tokenAddresses={tokenAddresses}
+        balances={balances}
+      />
+      <input
+        type="number"
+        placeholder="Amount"
+        value={fromAmount}
+        onChange={(e) => setFromAmount(e.target.value)}
+      />
 
-      <div style={{ textAlign: 'center', marginBottom: 10 }}>
-        <button onClick={swapTokenSelection}>⇅</button>
-      </div>
+      <label>To:</label>
+      <TokenSelector
+        selectedToken={toToken}
+        onSelectToken={setToToken}
+        tokenAddresses={tokenAddresses}
+        balances={balances}
+      />
+      <input type="text" placeholder="Estimated" value={toAmount} disabled />
 
-      <div style={{ marginBottom: 20 }}>
-        <label>To Token:</label>
-        <select value={tokenTo} onChange={e => setTokenTo(e.target.value)}>
-          {tokensForTo.map(addr => (
-            <option key={addr} value={addr}>
-              {tokensData[addr]?.symbol || '...'} ({tokensData[addr]?.balance?.toFixed(4) || '0'})
-            </option>
-          ))}
-        </select>
-        <input
-          type="text"
-          placeholder="Estimated Amount"
-          value={amountTo}
-          disabled
-          style={{ width: '100%', marginTop: 5, backgroundColor: '#f2f2f2' }}
-        />
-      </div>
-
-      {error && <div style={{ color: 'red', marginBottom: 10 }}>{error}</div>}
-
-      <button
-        onClick={handleSwap}
-        disabled={swapInProgress || loadingQuote || !amountFrom}
-        style={{ width: '100%', padding: 10, backgroundColor: '#4CAF50', color: 'white' }}
-      >
-        {swapInProgress ? 'Swapping...' : 'Swap'}
+      <button onClick={executeSwap} disabled={swapping || fetchingQuote || !wallet}>
+        {swapping ? "Swapping..." : "Swap"}
       </button>
     </div>
   );
-}
+};
+
+export default SwapTab;
