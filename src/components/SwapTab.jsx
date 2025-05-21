@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 
-const TOKEN_LIST = [
+const TOKEN_ADDRESSES = [
+  '0xYourMonadTokenAddressHere',   // Replace with actual Monad token address
   '0xb2f82D0f38dc453D596Ad40A37799446Cc89274A',
   '0xE0590015A873bF326bd645c3E1266d4db41C4E6B',
   '0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50',
@@ -12,157 +13,176 @@ const TOKEN_LIST = [
   '0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d'
 ];
 
+// ERC20 ABI minimal for symbol, decimals, balanceOf
 const ERC20_ABI = [
   'function symbol() view returns (string)',
   'function decimals() view returns (uint8)',
   'function balanceOf(address) view returns (uint256)'
 ];
 
-function SwapTab() {
+export default function SwapTab() {
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
   const [account, setAccount] = useState(null);
 
-  const [tokenFrom, setTokenFrom] = useState(TOKEN_LIST[0]);
-  const [tokenTo, setTokenTo] = useState(TOKEN_LIST[1]);
+  const [tokensData, setTokensData] = useState({}); // { address: {symbol, decimals, balance} }
 
+  const [tokenFrom, setTokenFrom] = useState('');
+  const [tokenTo, setTokenTo] = useState('');
   const [amountFrom, setAmountFrom] = useState('');
   const [amountTo, setAmountTo] = useState('');
 
-  const [balances, setBalances] = useState({});
-  const [symbols, setSymbols] = useState({});
-  const [decimalsMap, setDecimalsMap] = useState({});
-
   const [loadingQuote, setLoadingQuote] = useState(false);
   const [swapInProgress, setSwapInProgress] = useState(false);
+  const [error, setError] = useState('');
 
+  // Initialize provider, signer and account on mount
   useEffect(() => {
-    if (window.ethereum) {
-      const ethProvider = new ethers.providers.Web3Provider(window.ethereum);
-      setProvider(ethProvider);
-
-      ethProvider.send('eth_requestAccounts', [])
-        .then(accounts => {
-          setAccount(accounts[0]);
-          setSigner(ethProvider.getSigner());
-        })
-        .catch(console.error);
+    if (!window.ethereum) {
+      setError('No Ethereum wallet found');
+      return;
     }
+    const ethProvider = new ethers.providers.Web3Provider(window.ethereum);
+    setProvider(ethProvider);
+
+    ethProvider.send('eth_requestAccounts', [])
+      .then(accounts => {
+        setAccount(accounts[0]);
+        setSigner(ethProvider.getSigner());
+      })
+      .catch(() => setError('Wallet connection rejected'));
   }, []);
 
+  // Fetch symbols, decimals, balances for all tokens
   useEffect(() => {
     if (!provider || !account) return;
 
-    async function fetchTokensData() {
-      const newBalances = {};
-      const newSymbols = {};
-      const newDecimals = {};
-
-      for (const tokenAddress of TOKEN_LIST) {
+    async function fetchAllTokenData() {
+      const data = {};
+      for (const addr of TOKEN_ADDRESSES) {
         try {
-          const tokenContract = new ethers.Contract(tokenAddress, ERC20_ABI, provider);
-
-          const symbol = await tokenContract.symbol();
-          const decimals = await tokenContract.decimals();
-          const rawBalance = await tokenContract.balanceOf(account);
-
-          const formattedBalance = Number(ethers.utils.formatUnits(rawBalance, decimals));
-          newBalances[tokenAddress] = formattedBalance;
-          newSymbols[tokenAddress] = symbol;
-          newDecimals[tokenAddress] = decimals;
+          const tokenContract = new ethers.Contract(addr, ERC20_ABI, provider);
+          const [symbol, decimals, balanceRaw] = await Promise.all([
+            tokenContract.symbol(),
+            tokenContract.decimals(),
+            tokenContract.balanceOf(account)
+          ]);
+          const balance = Number(ethers.utils.formatUnits(balanceRaw, decimals));
+          data[addr] = { symbol, decimals, balance };
         } catch {
-          newBalances[tokenAddress] = 0;
-          newSymbols[tokenAddress] = 'N/A';
-          newDecimals[tokenAddress] = 18;
+          // On failure, fallback to defaults
+          data[addr] = { symbol: 'UNKNOWN', decimals: 18, balance: 0 };
         }
       }
+      setTokensData(data);
 
-      setBalances(newBalances);
-      setSymbols(newSymbols);
-      setDecimalsMap(newDecimals);
+      // Initialize tokens selection if empty
+      if (!tokenFrom) setTokenFrom(TOKEN_ADDRESSES[0]);
+      if (!tokenTo) setTokenTo(TOKEN_ADDRESSES[1] || TOKEN_ADDRESSES[0]);
     }
 
-    fetchTokensData();
+    fetchAllTokenData();
   }, [provider, account]);
 
+  // Filter token lists to prevent same token in both fields
+  const tokensForFrom = TOKEN_ADDRESSES.filter(addr => addr !== tokenTo);
+  const tokensForTo = TOKEN_ADDRESSES.filter(addr => addr !== tokenFrom);
+
+  // When tokenFrom, tokenTo or amountFrom changes, fetch swap quote
   useEffect(() => {
-    if (!amountFrom || isNaN(amountFrom) || Number(amountFrom) <= 0) {
+    if (!amountFrom || Number(amountFrom) <= 0) {
       setAmountTo('');
+      setError('');
+      return;
+    }
+    if (!tokenFrom || !tokenTo) {
+      setAmountTo('');
+      setError('');
+      return;
+    }
+    if (tokenFrom === tokenTo) {
+      setAmountTo('');
+      setError('From and To tokens cannot be the same');
+      return;
+    }
+    if (!tokensData[tokenFrom] || !tokensData[tokenTo]) {
+      setAmountTo('');
+      setError('Token data not loaded');
       return;
     }
 
-    async function getQuote() {
-      if (!tokenFrom || !tokenTo) {
-        setAmountTo('');
-        return;
-      }
-
+    async function fetchQuote() {
       setLoadingQuote(true);
-
+      setError('');
       try {
-        const sellDecimals = decimalsMap[tokenFrom] ?? 18;
+        const sellDecimals = tokensData[tokenFrom].decimals;
         const sellAmount = ethers.utils.parseUnits(amountFrom, sellDecimals).toString();
 
-        const apiKey = process.env.NEXT_PUBLIC_ZEROX_API_KEY || '';
-
         const url = `https://api.0x.org/swap/v1/quote?buyToken=${tokenTo}&sellToken=${tokenFrom}&sellAmount=${sellAmount}`;
-
-        const res = await fetch(url, {
-          headers: {
-            '0x-api-key': apiKey
-          }
-        });
-
+        const res = await fetch(url);
         if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          setError(errData.reason || 'Failed to fetch swap quote');
           setAmountTo('');
           setLoadingQuote(false);
           return;
         }
 
         const data = await res.json();
-        const buyDecimals = decimalsMap[tokenTo] ?? 18;
-
-        const buyAmount = ethers.utils.formatUnits(data.buyAmount, buyDecimals);
-        setAmountTo(buyAmount);
+        const buyDecimals = tokensData[tokenTo].decimals;
+        const buyAmountFormatted = ethers.utils.formatUnits(data.buyAmount, buyDecimals);
+        setAmountTo(buyAmountFormatted);
       } catch {
         setAmountTo('');
+        setError('Failed to fetch swap quote');
       } finally {
         setLoadingQuote(false);
       }
     }
 
-    getQuote();
-  }, [amountFrom, tokenFrom, tokenTo, decimalsMap]);
+    fetchQuote();
+  }, [amountFrom, tokenFrom, tokenTo, tokensData]);
 
-  function switchTokens() {
+  // Swap From and To tokens
+  function swapTokenSelection() {
     setTokenFrom(tokenTo);
     setTokenTo(tokenFrom);
     setAmountFrom('');
     setAmountTo('');
+    setError('');
   }
 
-  async function executeSwap() {
-    if (!signer) return;
-    if (!amountFrom || Number(amountFrom) <= 0) return;
+  // Perform the swap transaction
+  async function handleSwap() {
+    setError('');
+    if (!signer) {
+      setError('Wallet not connected');
+      return;
+    }
+    if (!amountFrom || Number(amountFrom) <= 0) {
+      setError('Invalid amount');
+      return;
+    }
+    if (tokenFrom === tokenTo) {
+      setError('From and To tokens cannot be the same');
+      return;
+    }
+    if (!tokensData[tokenFrom] || !tokensData[tokenTo]) {
+      setError('Token data not loaded');
+      return;
+    }
 
     setSwapInProgress(true);
 
     try {
-      const sellDecimals = decimalsMap[tokenFrom] ?? 18;
+      const sellDecimals = tokensData[tokenFrom].decimals;
       const sellAmount = ethers.utils.parseUnits(amountFrom, sellDecimals).toString();
 
-      const apiKey = process.env.NEXT_PUBLIC_ZEROX_API_KEY || '';
-
       const url = `https://api.0x.org/swap/v1/quote?buyToken=${tokenTo}&sellToken=${tokenFrom}&sellAmount=${sellAmount}`;
-
-      const res = await fetch(url, {
-        headers: {
-          '0x-api-key': apiKey
-        }
-      });
-
+      const res = await fetch(url);
       if (!res.ok) {
-        alert('Failed to fetch swap quote');
+        const errData = await res.json().catch(() => ({}));
+        setError(errData.reason || 'Failed to fetch swap quote');
         setSwapInProgress(false);
         return;
       }
@@ -174,85 +194,92 @@ function SwapTab() {
         data: quote.data,
         value: ethers.BigNumber.from(quote.value || '0'),
         gasPrice: ethers.BigNumber.from(quote.gasPrice || '0'),
-        gasLimit: ethers.BigNumber.from(quote.gas || '0'),
+        gasLimit: ethers.BigNumber.from(quote.gas || '0')
       });
 
       await tx.wait();
+
       alert('Swap completed successfully');
-    } catch (error) {
-      alert(`Swap failed: ${error.message}`);
+
+      // Refresh balances after swap
+      const updatedBalances = { ...tokensData };
+
+      const tokenFromContract = new ethers.Contract(tokenFrom, ERC20_ABI, provider);
+      const tokenToContract = new ethers.Contract(tokenTo, ERC20_ABI, provider);
+
+      const [balanceFromRaw, balanceToRaw] = await Promise.all([
+        tokenFromContract.balanceOf(account),
+        tokenToContract.balanceOf(account)
+      ]);
+
+      updatedBalances[tokenFrom].balance = Number(ethers.utils.formatUnits(balanceFromRaw, tokensData[tokenFrom].decimals));
+      updatedBalances[tokenTo].balance = Number(ethers.utils.formatUnits(balanceToRaw, tokensData[tokenTo].decimals));
+
+      setTokensData(updatedBalances);
+
+      setAmountFrom('');
+      setAmountTo('');
+      setError('');
+    } catch (e) {
+      setError('Swap failed: ' + (e.message || 'Unknown error'));
     } finally {
       setSwapInProgress(false);
     }
   }
 
   return (
-    <div className="swap-tab-container">
-      <h2>Token Swap</h2>
+    <div style={{ maxWidth: 400, margin: '0 auto', padding: 20 }}>
+      <h2 style={{ textAlign: 'center' }}>Swap Tokens</h2>
 
-      <div className="swap-row">
-        <label htmlFor="tokenFrom">From</label>
-        <select
-          id="tokenFrom"
-          value={tokenFrom}
-          onChange={(e) => setTokenFrom(e.target.value)}
-        >
-          {TOKEN_LIST.map((addr) => (
+      <div style={{ marginBottom: 20 }}>
+        <label>From Token:</label>
+        <select value={tokenFrom} onChange={e => setTokenFrom(e.target.value)}>
+          {tokensForFrom.map(addr => (
             <option key={addr} value={addr}>
-              {symbols[addr] || addr} - Balance: {balances[addr] !== undefined ? balances[addr].toFixed(4) : '0'}
+              {tokensData[addr]?.symbol || '...'} ({tokensData[addr]?.balance?.toFixed(4) || '0'})
             </option>
           ))}
         </select>
-
         <input
           type="number"
           placeholder="Amount"
           value={amountFrom}
-          min="0"
-          onChange={(e) => setAmountFrom(e.target.value)}
+          onChange={e => setAmountFrom(e.target.value)}
+          style={{ width: '100%', marginTop: 5 }}
         />
       </div>
 
-      <button
-        className="switch-button"
-        onClick={switchTokens}
-        aria-label="Switch tokens"
-      >
-        &#8646;
-      </button>
+      <div style={{ textAlign: 'center', marginBottom: 10 }}>
+        <button onClick={swapTokenSelection}>⇅</button>
+      </div>
 
-      <div className="swap-row">
-        <label htmlFor="tokenTo">To</label>
-        <select
-          id="tokenTo"
-          value={tokenTo}
-          onChange={(e) => setTokenTo(e.target.value)}
-        >
-          {TOKEN_LIST.map((addr) => (
+      <div style={{ marginBottom: 20 }}>
+        <label>To Token:</label>
+        <select value={tokenTo} onChange={e => setTokenTo(e.target.value)}>
+          {tokensForTo.map(addr => (
             <option key={addr} value={addr}>
-              {symbols[addr] || addr} - Balance: {balances[addr] !== undefined ? balances[addr].toFixed(4) : '0'}
+              {tokensData[addr]?.symbol || '...'} ({tokensData[addr]?.balance?.toFixed(4) || '0'})
             </option>
           ))}
         </select>
-
         <input
           type="text"
-          placeholder={loadingQuote ? 'Loading...' : 'Estimated Amount'}
+          placeholder="Estimated Amount"
           value={amountTo}
-          readOnly
           disabled
+          style={{ width: '100%', marginTop: 5, backgroundColor: '#f2f2f2' }}
         />
       </div>
 
+      {error && <div style={{ color: 'red', marginBottom: 10 }}>{error}</div>}
+
       <button
-        className="swap-submit-button"
-        onClick={executeSwap}
-        disabled={swapInProgress || loadingQuote || !account}
+        onClick={handleSwap}
+        disabled={swapInProgress || loadingQuote || !amountFrom}
+        style={{ width: '100%', padding: 10, backgroundColor: '#4CAF50', color: 'white' }}
       >
         {swapInProgress ? 'Swapping...' : 'Swap'}
       </button>
     </div>
   );
 }
-
-export default SwapTab;
