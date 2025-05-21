@@ -82,17 +82,12 @@ const SwapTab = () => {
     if (!provider) return;
     const newBalances = {};
     for (const address of tokenAddresses) {
-      if (address === ZERO_ADDRESS) {
-        const bal = await provider.getBalance(userAddress);
-        newBalances[ZERO_ADDRESS] = parseFloat(ethers.utils.formatEther(bal));
-      } else {
-        try {
-          const contract = new ethers.Contract(address, ERC20_ABI, provider);
-          const bal = await contract.balanceOf(userAddress);
-          newBalances[address] = parseFloat(ethers.utils.formatUnits(bal, 18));
-        } catch {
-          newBalances[address] = 0;
-        }
+      try {
+        const contract = new ethers.Contract(address, ERC20_ABI, provider);
+        const bal = await contract.balanceOf(userAddress);
+        newBalances[address] = parseFloat(ethers.utils.formatUnits(bal, 18));
+      } catch {
+        newBalances[address] = 0;
       }
     }
     setBalances(newBalances);
@@ -100,11 +95,10 @@ const SwapTab = () => {
 
   useEffect(() => {
     const calculateSwap = async () => {
-      if (!fromToken || !toToken || !fromAmount || isNaN(fromAmount) || Number(fromAmount) <= 0) {
+      if (!fromToken || !toToken || !fromAmount || isNaN(fromAmount) || Number(fromAmount) <= 0 || !account) {
         setToAmount("");
         return;
       }
-      if (!account) return;
 
       try {
         const fromAddress = fromToken === ZERO_ADDRESS ? "0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE" : fromToken;
@@ -129,7 +123,7 @@ const SwapTab = () => {
   }, [fromToken, toToken, fromAmount, account]);
 
   const executeSwap = async () => {
-    if (!signer) return alert("Connect wallet first");
+    if (!signer || !account) return alert("Connect wallet first");
     if (!fromToken || !toToken || !fromAmount) return alert("Fill all fields");
 
     setIsSwapping(true);
