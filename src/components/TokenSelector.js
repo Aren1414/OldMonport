@@ -2,21 +2,23 @@ import React, { useEffect, useState } from "react";
 import { ethers, Contract } from "ethers";
 import ERC20_ABI from "../abis/ERC20.json";
 
+const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
+
 const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances }) => {
   const [tokens, setTokens] = useState([]);
 
   useEffect(() => {
     const fetchTokens = async () => {
       if (!window.ethereum) return;
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
       const list = [];
 
       for (const address of tokenAddresses) {
-        if (address === ethers.ZeroAddress) {
+        if (address === ZERO_ADDRESS) {
           list.push({ address, symbol: "MON" });
         } else {
           try {
-            const contract = new Contract(address, ERC20_ABI, provider);
+            const contract = new ethers.Contract(address, ERC20_ABI, provider);
             const symbol = await contract.symbol();
             list.push({ address, symbol });
           } catch {
