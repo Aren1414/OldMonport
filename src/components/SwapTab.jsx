@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
 
 const tokenAddresses = [
-  'ETH', // Native token
+  'native', // for MON
   '0xb2f82D0f38dc453D596Ad40A37799446Cc89274A',
   '0xE0590015A873bF326bd645c3E1266d4db41C4E6B',
   '0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50',
@@ -20,13 +20,11 @@ const erc20Abi = [
   "function approve(address spender, uint256 amount) returns (bool)"
 ];
 
-const API_BASE = 'https://swap-api-snowy.vercel.app/api';
-
 const SwapTab = () => {
   const [provider, setProvider] = useState(null);
   const [signer, setSigner] = useState(null);
   const [account, setAccount] = useState('');
-  const [fromToken, setFromToken] = useState('ETH');
+  const [fromToken, setFromToken] = useState(tokenAddresses[0]);
   const [toToken, setToToken] = useState(tokenAddresses[1]);
   const [amount, setAmount] = useState('');
   const [estimatedAmount, setEstimatedAmount] = useState('');
@@ -39,115 +37,120 @@ const SwapTab = () => {
         try {
           await window.ethereum.request({
             method: 'wallet_switchEthereumChain',
-            params: [{ chainId: '0x80' }]
+            params: [{ chainId: '0x278F' }]
           });
-        } catch (e) {}
-        await window.ethereum.request({ method: 'eth_requestAccounts' });
-        const web3Provider = new ethers.providers.Web3Provider(window.ethereum);
+        } catch (e) {
+          console.error('Chain switch failed:', e);
+        }
+
+        const web3Provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
         const signer = web3Provider.getSigner();
-        const addr = await signer.getAddress();
+        const address = await signer.getAddress();
+
         setProvider(web3Provider);
         setSigner(signer);
-        setAccount(addr);
+        setAccount(address);
       }
     };
+
     connect();
   }, []);
 
   useEffect(() => {
-    const fetchTokens = async () => {
-      if (!provider || !account) return;
+    const fetchTokenData = async () => {
       const data = {};
-      const calls = tokenAddresses.map(async (addr) => {
-        if (addr === 'ETH') {
-          const balance = await provider.getBalance(account);
-          data[addr] = {
-            symbol: 'ETH',
-            decimals: 18,
-            balance: ethers.utils.formatUnits(balance, 18)
-          };
-        } else {
-          const contract = new ethers.Contract(addr, erc20Abi, provider);
-          const [symbol, decimals, balance] = await Promise.all([
-            contract.symbol(),
-            contract.decimals(),
-            contract.balanceOf(account)
-          ]);
-          data[addr] = {
-            symbol,
-            decimals,
-            balance: ethers.utils.formatUnits(balance, decimals)
-          };
+      await Promise.all(tokenAddresses.map(async (addr) => {
+        try {
+          if (addr === 'native') {
+            const balance = await provider.getBalance(account);
+            data[addr] = {
+              symbol: 'MON',
+              decimals: 18,
+              balance: ethers.utils.formatEther(balance)
+            };
+          } else {
+            const contract = new ethers.Contract(addr, erc20Abi, provider);
+            const [symbol, decimals, balance] = await Promise.all([
+              contract.symbol(),
+              contract.decimals(),
+              contract.balanceOf(account)
+            ]);
+            data[addr] = {
+              symbol,
+              decimals,
+              balance: ethers.utils.formatUnits(balance, decimals)
+            };
+          }
+        } catch (e) {
+          console.error('Error loading token:', addr, e);
+          data[addr] = { symbol: '???', decimals: 18, balance: '0.0' };
         }
-      });
-      await Promise.all(calls);
+      }));
       setTokenData(data);
     };
-    fetchTokens();
+
+    if (provider && account) fetchTokenData();
   }, [provider, account]);
 
   useEffect(() => {
-    const fetchQuote = async () => {
-      if (!amount || !fromToken || !toToken) return;
+    const getQuote = async () => {
+      if (!amount || !fromToken || !toToken || !tokenData[fromToken]) return;
       setEstimatedAmount('Loading...');
       try {
-        const res = await fetch(`${API_BASE}/quote?fromToken=${fromToken}&toToken=${toToken}&amount=${amount}`);
-        const data = await res.json();
-        if (data?.estimatedAmountOut) {
-          setEstimatedAmount(data.estimatedAmountOut);
+        const decimals = tokenData[fromToken].decimals;
+        const amountIn = ethers.utils.parseUnits(amount, decimals).toString();
+        const res = await fetch(`https://swap-api-snowy.vercel.app/api/quote?fromToken=${fromToken}&toToken=${toToken}&amount=${amountIn}`);
+        const json = await res.json();
+        if (json?.estimatedAmountOut) {
+          const outDecimals = tokenData[toToken]?.decimals || 18;
+          const formatted = ethers.utils.formatUnits(json.estimatedAmountOut, outDecimals);
+          setEstimatedAmount(formatted);
         } else {
-          setEstimatedAmount('Unavailable');
+          setEstimatedAmount('Error');
         }
-      } catch (err) {
+      } catch (e) {
+        console.error('Quote error:', e);
         setEstimatedAmount('Error');
       }
     };
-    fetchQuote();
-  }, [amount, fromToken, toToken]);
+
+    getQuote();
+  }, [amount, fromToken, toToken, tokenData]);
 
   const handleSwap = async () => {
-    if (!signer || !amount || !fromToken || !toToken) return;
+    if (!signer || !fromToken || !toToken || !amount || !tokenData[fromToken]) return;
     setLoading(true);
     try {
-      const body = {
-        fromToken,
-        toToken,
-        amount,
-        address: account
-      };
-
-      // If ERC20, approve first
-      if (fromToken !== 'ETH') {
-        const contract = new ethers.Contract(fromToken, erc20Abi, signer);
-        const decimals = tokenData[fromToken].decimals || 18;
-        const amt = ethers.utils.parseUnits(amount, decimals);
-        const tx = await contract.approve("0x88B96aF200c8a9c35442C8AC6cd3D22695AaE4F0", amt);
-        await tx.wait();
-      }
-
-      const res = await fetch(`${API_BASE}/swap`, {
+      const decimals = tokenData[fromToken].decimals;
+      const amountIn = ethers.utils.parseUnits(amount, decimals).toString();
+      const res = await fetch('https://swap-api-snowy.vercel.app/api/swap', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
+        body: JSON.stringify({
+          fromToken,
+          toToken,
+          amount: amountIn,
+          address: account
+        })
       });
 
       const data = await res.json();
-      if (!data || !data.tx) throw new Error('Invalid tx');
+      if (!data || !data.tx) throw new Error('Invalid TX data');
 
       const tx = await signer.sendTransaction(data.tx);
       await tx.wait();
-      alert('Swap successful!');
+      alert('Swap successful');
     } catch (err) {
-      console.error(err);
+      console.error('Swap error:', err);
       alert('Swap failed');
     }
     setLoading(false);
   };
 
   const switchTokens = () => {
-    const tmp = fromToken;
+    const temp = fromToken;
     setFromToken(toToken);
-    setToToken(tmp);
+    setToToken(temp);
     setEstimatedAmount('');
   };
 
@@ -163,12 +166,7 @@ const SwapTab = () => {
             </option>
           ))}
         </select>
-        <input
-          type="number"
-          placeholder="Amount"
-          value={amount}
-          onChange={e => setAmount(e.target.value)}
-        />
+        <input type="number" placeholder="Amount" value={amount} onChange={e => setAmount(e.target.value)} />
       </div>
 
       <div className="swap-switch">
