@@ -114,6 +114,8 @@ const SwapTab = () => {
       const quote = await getSwapQuote();
       if (!quote || !quote.tx) throw new Error('Invalid TX data');
 
+      console.log("Transaction Quote:", quote.tx); // Debugging transaction data
+
       const tx = await signer.sendTransaction(quote.tx);
       await tx.wait();
       alert('Swap successful');
