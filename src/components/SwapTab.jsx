@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { ethers } from 'ethers';
+import { connectWallet, getWalletAddress, switchToMonadNetwork } from "../utils/wallet";
+import TokenSelector from "../components/TokenSelector";
 
 const tokenAddresses = [
   'native', // MON token
@@ -11,13 +13,6 @@ const tokenAddresses = [
   '0xf817257fed379853cDe0fa4F97AB987181B1E5Ea',
   '0xB5a30b0FDc5EA94A52fDc42e3E9760Cb8449Fb37',
   '0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d'
-];
-
-const erc20Abi = [
-  "function symbol() view returns (string)",
-  "function decimals() view returns (uint8)",
-  "function balanceOf(address) view returns (uint256)",
-  "function approve(address spender, uint256 amount) returns (bool)"
 ];
 
 const SwapTab = () => {
@@ -33,33 +28,24 @@ const SwapTab = () => {
   const apiKey = 'ca1b360f-cde6-4073-9589-53438e781c22';
 
   useEffect(() => {
-    const connect = async () => {
-      if (window.ethereum) {
-        try {
-          await window.ethereum.request({
-            method: 'wallet_switchEthereumChain',
-            params: [{ chainId: '0x278F' }] // Monad testnet
-          });
-        } catch (e) {
-          console.error('Chain switch failed:', e);
-        }
+    const initWallet = async () => {
+      await switchToMonadNetwork();
+      const address = await connectWallet();
+      if (address) setAccount(address);
 
-        const web3Provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
-        const signer = web3Provider.getSigner();
-        const address = await signer.getAddress();
-
-        setProvider(web3Provider);
-        setSigner(signer);
-        setAccount(address);
-      }
+      const web3Provider = new ethers.providers.Web3Provider(window.ethereum, 'any');
+      setProvider(web3Provider);
+      setSigner(web3Provider.getSigner());
     };
 
-    connect();
+    initWallet();
   }, []);
 
   useEffect(() => {
     const fetchTokenData = async () => {
+      if (!provider || !account) return;
       const data = {};
+
       await Promise.all(tokenAddresses.map(async (addr) => {
         try {
           if (addr === 'native') {
@@ -70,7 +56,7 @@ const SwapTab = () => {
               balance: ethers.utils.formatEther(balance)
             };
           } else {
-            const contract = new ethers.Contract(addr, erc20Abi, provider);
+            const contract = new ethers.Contract(addr, ["function symbol() view returns (string)", "function decimals() view returns (uint8)", "function balanceOf(address) view returns (uint256)"], provider);
             const [symbol, decimals, balance] = await Promise.all([
               contract.symbol(),
               contract.decimals(),
@@ -84,13 +70,13 @@ const SwapTab = () => {
           }
         } catch (e) {
           console.error('Error loading token:', addr, e);
-          data[addr] = { symbol: '???', decimals: 18, balance: '0.0' };
+          data[addr] = { symbol: 'UNKNOWN', decimals: 18, balance: '0.0' };
         }
       }));
       setTokenData(data);
     };
 
-    if (provider && account) fetchTokenData();
+    fetchTokenData();
   }, [provider, account]);
 
   const getSwapQuote = async () => {
@@ -99,7 +85,7 @@ const SwapTab = () => {
     try {
       const decimals = tokenData[fromToken].decimals;
       const amountIn = ethers.utils.parseUnits(amount, decimals).toString();
-      const url = `https://api.0x.org/swap/v1/quote?chainId=1&sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${amountIn}&takerAddress=${account}`;
+      const url = `https://api.0x.org/swap/v1/quote?chainId=10143&sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${amountIn}&takerAddress=${account}`;
 
       const response = await fetch(url, {
         headers: {
@@ -111,8 +97,7 @@ const SwapTab = () => {
       const json = await response.json();
       if (json?.estimatedAmountOut) {
         const outDecimals = tokenData[toToken]?.decimals || 18;
-        const formatted = ethers.utils.formatUnits(json.estimatedAmountOut, outDecimals);
-        setEstimatedAmount(formatted);
+        setEstimatedAmount(ethers.utils.formatUnits(json.estimatedAmountOut, outDecimals));
       } else {
         setEstimatedAmount('Error');
       }
@@ -139,42 +124,15 @@ const SwapTab = () => {
     setLoading(false);
   };
 
-  const switchTokens = () => {
-    const temp = fromToken;
-    setFromToken(toToken);
-    setToToken(temp);
-    setEstimatedAmount('');
-  };
-
   return (
     <div className="swap-tab">
       <h2>Token Swap</h2>
 
-      <div className="swap-field">
-        <select value={fromToken} onChange={e => setFromToken(e.target.value)}>
-          {tokenAddresses.map(addr => (
-            <option key={addr} value={addr}>
-              {tokenData[addr]?.symbol || '...'} - {parseFloat(tokenData[addr]?.balance || 0).toFixed(4)}
-            </option>
-          ))}
-        </select>
-        <input type="number" placeholder="Amount" value={amount} onChange={e => setAmount(e.target.value)} />
-      </div>
+      <TokenSelector selectedToken={fromToken} onSelectToken={setFromToken} tokenAddresses={tokenAddresses} balances={tokenData} />
+      <input type="number" placeholder="Amount" value={amount} onChange={e => setAmount(e.target.value)} />
 
-      <div className="swap-switch">
-        <button onClick={switchTokens}>⇅</button>
-      </div>
-
-      <div className="swap-field">
-        <select value={toToken} onChange={e => setToToken(e.target.value)}>
-          {tokenAddresses.map(addr => (
-            <option key={addr} value={addr}>
-              {tokenData[addr]?.symbol || '...'} - {parseFloat(tokenData[addr]?.balance || 0).toFixed(4)}
-            </option>
-          ))}
-        </select>
-        <input type="text" readOnly value={estimatedAmount ? `≈ ${estimatedAmount}` : ''} />
-      </div>
+      <TokenSelector selectedToken={toToken} onSelectToken={setToToken} tokenAddresses={tokenAddresses} balances={tokenData} />
+      <input type="text" readOnly value={estimatedAmount ? `≈ ${estimatedAmount}` : ''} />
 
       <button className="swap-button" onClick={handleSwap} disabled={loading}>
         {loading ? 'Swapping...' : 'Swap'}
