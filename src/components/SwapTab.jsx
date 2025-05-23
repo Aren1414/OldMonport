@@ -5,15 +5,17 @@ import { getTokenSymbol, getTokenBalance } from "../utils/erc20";
 
 const tokenList = [
   "0x0000000000000000000000000000000000000000", // MON native
-  "0x183b5Fe6B949cF62fc74BF3F563Aa3DB4E5cf16f",
-  "0x64Fa8C701139673F27588Aa3D6A653DeBc58088b",
-  "0x90ac7F3D489fF6eA2D2B70e5Cc8E9805cEddf4Cc",
-  "0xCfD82A01349634B69aDc4c24356e8D5fF6A04E88",
-  "0x7Ed8cD8d7E7bA21f11b51d7d682F9A1BaB2A2dA1",
-  "0x8c3a7a1bB74f4cE2F8e4eD23eEa38F9386F9947c",
-  "0x5298B5aDD41DE1E9638d0F1671cF9b5e7d3Ca0a1",
-  "0x76A63d95f59DdcaF0f2B59E2ED92D7A76A529a95",
+  "0xb2f82D0f38dc453D596Ad40A37799446Cc89274A",
+  "0xE0590015A873bF326bd645c3E1266d4db41C4E6B",
+  "0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50",
+  "0x0F0BDEbF0F83cD1EE3974779Bcb7315f9808c714",
+  "0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701",
+  "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea",
+  "0xB5a30b0FDc5EA94A52fDc42e3E9760Cb8449Fb37",
+  "0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d"
 ];
+
+const permit2Address = "0x000000000022D473030F116dDEE9F6B43aC78BA3"; // Permit2 contract address
 
 const SwapTab = () => {
   const [fromToken, setFromToken] = useState(tokenList[0]);
@@ -23,22 +25,28 @@ const SwapTab = () => {
   const [walletAddress, setWalletAddress] = useState(null);
   const [tokenSymbols, setTokenSymbols] = useState({});
   const [tokenBalances, setTokenBalances] = useState({});
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const init = async () => {
-      const address = await connectWallet();
-      setWalletAddress(address);
+      try {
+        const address = await connectWallet();
+        setWalletAddress(address);
 
-      const symbols = {};
-      const balances = {};
+        const symbols = {};
+        const balances = {};
 
-      for (const token of tokenList) {
-        symbols[token] = await getTokenSymbol(token, address);
-        balances[token] = await getTokenBalance(token, address);
+        for (const token of tokenList) {
+          symbols[token] = await getTokenSymbol(token, address);
+          balances[token] = await getTokenBalance(token, address);
+        }
+
+        setTokenSymbols(symbols);
+        setTokenBalances(balances);
+      } catch (err) {
+        setError("Failed to initialize wallet and tokens");
+        console.error("Initialization error:", err);
       }
-
-      setTokenSymbols(symbols);
-      setTokenBalances(balances);
     };
 
     init();
@@ -63,12 +71,36 @@ const SwapTab = () => {
         setToAmount(amountOut);
       } catch (err) {
         console.error("Quote fetch error:", err);
+        setError("Failed to fetch quote");
         setToAmount("");
       }
     };
 
     fetchQuote();
   }, [fromToken, toToken, fromAmount, walletAddress]);
+
+  const setAllowance = async (tokenAddress) => {
+    try {
+      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const signer = provider.getSigner();
+      const tokenContract = new ethers.Contract(
+        tokenAddress,
+        [
+          "function approve(address spender, uint256 amount) external returns (bool)",
+          "function allowance(address owner, address spender) external view returns (uint256)"
+        ],
+        signer
+      );
+
+      // Set the allowance amount to a large value for unlimited approval
+      const amount = ethers.utils.parseUnits("1000000", 18);
+      const tx = await tokenContract.approve(permit2Address, amount);
+      await tx.wait();
+      console.log("Allowance set successfully");
+    } catch (err) {
+      console.error("Error setting allowance:", err);
+    }
+  };
 
   const handleSwap = async () => {
     if (!walletAddress || !fromAmount) return;
@@ -77,6 +109,9 @@ const SwapTab = () => {
     const url = `https://api.0x.org/swap/permit2/quote?chainId=10143&sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${sellAmount}&taker=${walletAddress}`;
 
     try {
+      // Set token allowance before performing the swap
+      await setAllowance(fromToken);
+
       const res = await fetch(url, {
         headers: {
           "0x-api-key": "ca1b360f-cde6-4073-9589-53438e781c22",
@@ -96,6 +131,7 @@ const SwapTab = () => {
       alert("Swap successful");
     } catch (err) {
       console.error("Swap error:", err);
+      setError("Swap failed");
       alert("Swap failed");
     }
   };
@@ -103,6 +139,7 @@ const SwapTab = () => {
   return (
     <div className="swap-tab">
       <h2>Token Swap</h2>
+      {error && <p style={{ color: "red" }}>{error}</p>}
 
       <div>
         <label>From:</label>
