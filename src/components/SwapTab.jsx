@@ -71,7 +71,7 @@ const SwapTab = () => {
       });
 
       const headers = {
-        '0x-api-key': 'ca1b360f-cde6-4073-9589-53438e781c22',
+        '0x-api-key': process.env.REACT_APP_0X_API_KEY,
         '0x-version': 'v2',
       };
 
@@ -136,7 +136,7 @@ const SwapTab = () => {
     });
 
     const headers = {
-      '0x-api-key': 'ca1b360f-cde6-4073-9589-53438e781c22',
+      '0x-api-key': process.env.REACT_APP_0X_API_KEY,
       '0x-version': 'v2',
     };
 
