@@ -73,6 +73,8 @@ const SwapTab = () => {
       const headers = {
         '0x-api-key': process.env.REACT_APP_0X_API_KEY,
         '0x-version': 'v2',
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
       };
 
       try {
@@ -138,6 +140,8 @@ const SwapTab = () => {
     const headers = {
       '0x-api-key': process.env.REACT_APP_0X_API_KEY,
       '0x-version': 'v2',
+      'Accept': 'application/json',
+      'Content-Type': 'application/json',
     };
 
     try {
