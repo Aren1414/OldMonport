@@ -53,7 +53,7 @@ const SwapTab = () => {
   }, []);
 
   useEffect(() => {
-    const fetchQuote = async () => {
+    const fetchPrice = async () => {
       if (!fromAmount || !walletAddress) return;
 
       if (isNaN(fromAmount) || parseFloat(fromAmount) <= 0) {
@@ -62,33 +62,33 @@ const SwapTab = () => {
       }
 
       const sellAmount = ethers.utils.parseUnits(fromAmount, 18).toString();
-      const url = `https://api.0x.org/swap/permit2/quote?chainId=10143&sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${sellAmount}&taker=${walletAddress}`;
+      const priceParams = new URLSearchParams({
+        chainId: '10143',
+        sellToken: fromToken,
+        buyToken: toToken,
+        sellAmount: sellAmount,
+        taker: walletAddress,
+      });
+
+      const headers = {
+        '0x-api-key': 'ca1b360f-cde6-4073-9589-53438e781c22',
+        '0x-version': 'v2',
+      };
 
       try {
-        const res = await fetch(url, {
-          headers: {
-            "0x-api-key": "ca1b360f-cde6-4073-9589-53438e781c22",
-            "0x-version": "v2"
-          }
-        });
-
-        if (!res.ok) {
-          const errorData = await res.json();
-          throw new Error(errorData.message || "Failed to fetch quote");
-        }
-
-        const data = await res.json();
-        const amountOut = ethers.utils.formatUnits(data.buyAmount, 18);
+        const priceResponse = await fetch(`https://api.0x.org/swap/permit2/price?${priceParams.toString()}`, { headers });
+        const priceData = await priceResponse.json();
+        const amountOut = ethers.utils.formatUnits(priceData.buyAmount, 18);
         setToAmount(amountOut);
         setError(null);
       } catch (err) {
-        console.error("Quote fetch error:", err);
-        setError(err.message || "Failed to fetch quote");
+        console.error("Price fetch error:", err);
+        setError(err.message || "Failed to fetch price");
         setToAmount("");
       }
     };
 
-    fetchQuote();
+    fetchPrice();
   }, [fromToken, toToken, fromAmount, walletAddress]);
 
   const setAllowance = async (tokenAddress) => {
@@ -127,33 +127,47 @@ const SwapTab = () => {
     }
 
     const sellAmount = ethers.utils.parseUnits(fromAmount, 18).toString();
-    const url = `https://api.0x.org/swap/permit2/quote?chainId=10143&sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${sellAmount}&taker=${walletAddress}`;
+    const quoteParams = new URLSearchParams({
+      chainId: '10143',
+      sellToken: fromToken,
+      buyToken: toToken,
+      sellAmount: sellAmount,
+      taker: walletAddress,
+    });
+
+    const headers = {
+      '0x-api-key': 'ca1b360f-cde6-4073-9589-53438e781c22',
+      '0x-version': 'v2',
+    };
 
     try {
       // Set token allowance before performing the swap
       await setAllowance(fromToken);
 
-      const res = await fetch(url, {
-        headers: {
-          "0x-api-key": "ca1b360f-cde6-4073-9589-53438e781c22",
-          "0x-version": "v2"
-        }
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.message || "Failed to fetch quote");
-      }
-
-      const data = await res.json();
+      const quoteResponse = await fetch(`https://api.0x.org/swap/permit2/quote?${quoteParams.toString()}`, { headers });
+      const quoteData = await quoteResponse.json();
 
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
+
+      // Sign the Permit2 EIP-712 message
+      const signature = await signer._signTypedData(
+        quoteData.permit2.eip712.domain,
+        quoteData.permit2.eip712.types,
+        quoteData.permit2.eip712.message
+      );
+
+      // Append signature length and signature data to transaction.data
+      const signatureLengthInHex = ethers.utils.hexZeroPad(ethers.utils.hexlify(signature.length / 2), 32);
+      const transactionData = quoteData.transaction.data + signatureLengthInHex.substring(2) + signature.substring(2);
+
+      // Submit the transaction with Permit2 signature
       const tx = await signer.sendTransaction({
-        to: data.to,
-        data: data.data,
-        value: data.value ? ethers.BigNumber.from(data.value) : undefined
+        to: quoteData.transaction.to,
+        data: transactionData,
+        value: quoteData.transaction.value ? ethers.BigNumber.from(quoteData.transaction.value) : undefined
       });
+
       await tx.wait();
       alert("Swap successful");
       setError(null);
