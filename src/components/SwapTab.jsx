@@ -87,6 +87,10 @@ const SwapTab = () => {
 
   const setAllowance = async (tokenAddress) => {
     try {
+      if (tokenAddress === "0x0000000000000000000000000000000000000000") {
+        return; // No need to set allowance for native token
+      }
+
       const provider = new ethers.providers.Web3Provider(window.ethereum);
       const signer = provider.getSigner();
       const tokenContract = new ethers.Contract(
