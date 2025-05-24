@@ -1,5 +1,3 @@
-import { ethers } from "ethers";
-
 export const getTokenSymbol = async (tokenAddress, walletAddress) => {
   if (tokenAddress === "0x0000000000000000000000000000000000000000") return "MON";
 
