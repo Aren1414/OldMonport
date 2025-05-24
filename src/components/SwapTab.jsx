@@ -71,13 +71,19 @@ const SwapTab = () => {
             "0x-version": "v2"
           }
         });
+
+        if (!res.ok) {
+          const errorData = await res.json();
+          throw new Error(errorData.message || "Failed to fetch quote");
+        }
+
         const data = await res.json();
         const amountOut = ethers.utils.formatUnits(data.buyAmount, 18);
         setToAmount(amountOut);
         setError(null);
       } catch (err) {
         console.error("Quote fetch error:", err);
-        setError("Failed to fetch quote");
+        setError(err.message || "Failed to fetch quote");
         setToAmount("");
       }
     };
@@ -133,6 +139,12 @@ const SwapTab = () => {
           "0x-version": "v2"
         }
       });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.message || "Failed to fetch quote");
+      }
+
       const data = await res.json();
 
       const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -147,7 +159,7 @@ const SwapTab = () => {
       setError(null);
     } catch (err) {
       console.error("Swap error:", err);
-      setError("Swap failed");
+      setError(err.message || "Swap failed");
       alert("Swap failed");
     }
   };
