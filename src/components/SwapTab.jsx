@@ -56,6 +56,11 @@ const SwapTab = () => {
     const fetchQuote = async () => {
       if (!fromAmount || !walletAddress) return;
 
+      if (isNaN(fromAmount) || parseFloat(fromAmount) <= 0) {
+        setError("Please enter a valid amount");
+        return;
+      }
+
       const sellAmount = ethers.utils.parseUnits(fromAmount, 18).toString();
       const url = `https://api.0x.org/swap/permit2/quote?chainId=10143&sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${sellAmount}&taker=${walletAddress}`;
 
@@ -69,6 +74,7 @@ const SwapTab = () => {
         const data = await res.json();
         const amountOut = ethers.utils.formatUnits(data.buyAmount, 18);
         setToAmount(amountOut);
+        setError(null);
       } catch (err) {
         console.error("Quote fetch error:", err);
         setError("Failed to fetch quote");
@@ -105,6 +111,11 @@ const SwapTab = () => {
   const handleSwap = async () => {
     if (!walletAddress || !fromAmount) return;
 
+    if (isNaN(fromAmount) || parseFloat(fromAmount) <= 0) {
+      setError("Please enter a valid amount");
+      return;
+    }
+
     const sellAmount = ethers.utils.parseUnits(fromAmount, 18).toString();
     const url = `https://api.0x.org/swap/permit2/quote?chainId=10143&sellToken=${fromToken}&buyToken=${toToken}&sellAmount=${sellAmount}&taker=${walletAddress}`;
 
@@ -129,6 +140,7 @@ const SwapTab = () => {
       });
       await tx.wait();
       alert("Swap successful");
+      setError(null);
     } catch (err) {
       console.error("Swap error:", err);
       setError("Swap failed");
