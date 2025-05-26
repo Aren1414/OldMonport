@@ -24,7 +24,8 @@ const DeployTab = () => {
 
   const handleDeploy = async () => {
     if (!file || !name || !price) {
-      return alert("Please fill all fields.");
+      alert("Please fill all fields.");
+      return;
     }
 
     try {
@@ -43,6 +44,7 @@ const DeployTab = () => {
       const tx = await contract.deployCustomNFT(metadata.url, name, ethers.utils.parseUnits(price, 18), {
         value,
       });
+
       await tx.wait();
       alert("Deployment successful!");
     } catch (error) {
@@ -58,6 +60,7 @@ const DeployTab = () => {
   return (
     <div className="tab deploy-tab">
       <h2>Create Your NFT Collection</h2>
+      {walletAddress && <p>Connected: {walletAddress}</p>}
       <input type="file" accept="image/*" onChange={(e) => setFile(e.target.files[0])} />
       <input type="text" placeholder="NFT Name" value={name} onChange={(e) => setName(e.target.value)} />
       <input type="number" placeholder="Mint Price in MON" value={price} onChange={(e) => setPrice(e.target.value)} />
