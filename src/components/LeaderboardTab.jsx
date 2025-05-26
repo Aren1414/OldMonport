@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { getLeaderboardData, getFarcasterProfile } from "../utils/farcaster";
 import "../styles/App.css";
 
@@ -7,38 +7,38 @@ const LeaderboardTab = () => {
   const [userProfile, setUserProfile] = useState(null);
   const [leaderboard, setLeaderboard] = useState([]);
 
-  const connectWallet = async () => {
+  const connectWallet = useCallback(async () => {
     if (window.ethereum) {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       setUserAddress(accounts[0]);
     }
-  };
+  }, []);
 
-  const loadLeaderboard = async () => {
+  const loadLeaderboard = useCallback(async () => {
     try {
       const data = await getLeaderboardData();
       setLeaderboard(data);
     } catch (e) {
       console.error("Failed to load leaderboard", e);
     }
-  };
+  }, []);
 
-  const loadUserProfile = async () => {
+  const loadUserProfile = useCallback(async () => {
     if (!userAddress) return;
     const profile = await getFarcasterProfile(userAddress);
     setUserProfile(profile);
-  };
+  }, [userAddress]);
 
   useEffect(() => {
     connectWallet();
-  }, []);
+  }, [connectWallet]);
 
   useEffect(() => {
     if (userAddress) {
       loadUserProfile();
       loadLeaderboard();
     }
-  }, [userAddress]);
+  }, [userAddress, loadUserProfile, loadLeaderboard]);
 
   return (
     <div className="tab leaderboard-tab">
