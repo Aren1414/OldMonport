@@ -1,3 +1,4 @@
+import React from "react"; // Fix JSX scope issue
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { connectWallet, getWalletAddress } from "../utils/wallet";
