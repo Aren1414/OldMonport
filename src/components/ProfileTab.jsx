@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { ethers } from "ethers";
 import { getFarcasterProfile } from "../utils/farcaster";
 import "../styles/App.css";
@@ -10,14 +10,14 @@ const ProfileTab = () => {
   const [points, setPoints] = useState(0);
   const [userData, setUserData] = useState(null);
 
-  const connectWallet = async () => {
+  const connectWallet = useCallback(async () => {
     if (window.ethereum) {
       const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
       setWalletAddress(accounts[0]);
     }
-  };
+  }, []);
 
-  const fetchBalance = async () => {
+  const fetchBalance = useCallback(async () => {
     if (!walletAddress) return;
     try {
       const provider = new ethers.providers.Web3Provider(window.ethereum);
@@ -26,31 +26,30 @@ const ProfileTab = () => {
     } catch (e) {
       console.error("Balance fetch error:", e);
     }
-  };
+  }, [walletAddress]);
 
-  const fetchUserData = async () => {
+  const fetchUserData = useCallback(async () => {
     if (!walletAddress) return;
     try {
       const profile = await getFarcasterProfile(walletAddress);
       setUserData(profile);
-
       setReferrals(profile.referrals || 0);
       setPoints(profile.points || 0);
     } catch (e) {
       console.error("Error fetching Farcaster profile:", e);
     }
-  };
+  }, [walletAddress]);
 
   useEffect(() => {
     connectWallet();
-  }, []);
+  }, [connectWallet]);
 
   useEffect(() => {
     if (walletAddress) {
       fetchBalance();
       fetchUserData();
     }
-  }, [walletAddress]);
+  }, [walletAddress, fetchBalance, fetchUserData]);
 
   return (
     <div className="tab profile-tab">
