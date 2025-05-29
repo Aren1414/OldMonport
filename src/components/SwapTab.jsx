@@ -1,9 +1,12 @@
-import React from "react";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ethers } from "ethers";
 import { connectWallet, getWalletAddress } from "../utils/wallet";
 import { getTokenSymbol, getTokenBalance } from "../utils/erc20";
 
+// Load environment variables
+const API_BASE = "https://v2.api.0x.org/swap";
+const CHAIN_ID = "10143";
+const API_KEY = process.env.REACT_APP_0X_API_KEY;
 const tokenList = [
   "0x0000000000000000000000000000000000000000",
   "0xb2f82D0f38dc453D596Ad40A37799446Cc89274A",
@@ -43,8 +46,8 @@ const SwapTab = () => {
         setTokenSymbols(symbols);
         setTokenBalances(balances);
       } catch (err) {
-        setError("Failed to initialize wallet and tokens");
-        console.error("Initialization error:", err);
+        setError("Initialization failed");
+        console.error(err);
       }
     };
 
@@ -55,28 +58,29 @@ const SwapTab = () => {
     const fetchPrice = async () => {
       if (!fromAmount || !walletAddress) return;
       if (isNaN(fromAmount) || parseFloat(fromAmount) <= 0) {
-        setError("Please enter a valid amount");
+        setError("Invalid amount");
         return;
       }
 
       const sellAmount = ethers.utils.parseUnits(fromAmount, 18).toString();
-      const priceParams = new URLSearchParams({
-        chainId: '10143',
+      const params = new URLSearchParams({
+        chainId: CHAIN_ID,
         sellToken: fromToken,
         buyToken: toToken,
-        sellAmount: sellAmount,
+        sellAmount,
         takerAddress: walletAddress
       });
 
+      const headers = API_KEY ? { "0x-api-key": API_KEY } : {};
+
       try {
-        const res = await fetch(`https://v2.api.0x.org/swap/price?${priceParams}`);
+        const res = await fetch(`${API_BASE}/price?${params}`, { headers });
         const data = await res.json();
-        const amountOut = ethers.utils.formatUnits(data.buyAmount, 18);
-        setToAmount(amountOut);
+        setToAmount(ethers.utils.formatUnits(data.buyAmount, 18));
         setError(null);
       } catch (err) {
         console.error("Price fetch error:", err);
-        setError("Failed to fetch price");
+        setError("Price fetch failed");
         setToAmount("");
       }
     };
@@ -87,21 +91,23 @@ const SwapTab = () => {
   const handleSwap = async () => {
     if (!walletAddress || !fromAmount) return;
     if (isNaN(fromAmount) || parseFloat(fromAmount) <= 0) {
-      setError("Please enter a valid amount");
+      setError("Invalid amount");
       return;
     }
 
     const sellAmount = ethers.utils.parseUnits(fromAmount, 18).toString();
-    const quoteParams = new URLSearchParams({
-      chainId: '10143',
+    const params = new URLSearchParams({
+      chainId: CHAIN_ID,
       sellToken: fromToken,
       buyToken: toToken,
-      sellAmount: sellAmount,
+      sellAmount,
       takerAddress: walletAddress
     });
 
+    const headers = API_KEY ? { "0x-api-key": API_KEY } : {};
+
     try {
-      const res = await fetch(`https://v2.api.0x.org/swap/quote?${quoteParams}`);
+      const res = await fetch(`${API_BASE}/quote?${params}`, { headers });
       const data = await res.json();
 
       const provider = new ethers.providers.Web3Provider(window.ethereum);
