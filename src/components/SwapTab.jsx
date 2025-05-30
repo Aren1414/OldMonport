@@ -3,10 +3,11 @@ import { ethers } from "ethers";
 import { connectWallet, getWalletAddress } from "../utils/wallet";
 import { getTokenSymbol, getTokenBalance } from "../utils/erc20";
 
-// Load environment variables
-const API_BASE = "https://v2.api.0x.org/swap";
+// Network configuration
 const CHAIN_ID = "10143";
-const API_KEY = process.env.REACT_APP_0X_API_KEY;
+const API_BASE = "https://tourmaline-periwinkle-airmail.glitch.me/https://v2.api.0x.org/swap";
+
+// List of real tokens on Monad testnet
 const tokenList = [
   "0x0000000000000000000000000000000000000000",
   "0xb2f82D0f38dc453D596Ad40A37799446Cc89274A",
@@ -46,8 +47,8 @@ const SwapTab = () => {
         setTokenSymbols(symbols);
         setTokenBalances(balances);
       } catch (err) {
-        setError("Initialization failed");
         console.error(err);
+        setError("Initialization failed");
       }
     };
 
@@ -71,10 +72,8 @@ const SwapTab = () => {
         takerAddress: walletAddress
       });
 
-      const headers = API_KEY ? { "0x-api-key": API_KEY } : {};
-
       try {
-        const res = await fetch(`${API_BASE}/price?${params}`, { headers });
+        const res = await fetch(`${API_BASE}/price?${params}`);
         const data = await res.json();
         setToAmount(ethers.utils.formatUnits(data.buyAmount, 18));
         setError(null);
@@ -104,10 +103,8 @@ const SwapTab = () => {
       takerAddress: walletAddress
     });
 
-    const headers = API_KEY ? { "0x-api-key": API_KEY } : {};
-
     try {
-      const res = await fetch(`${API_BASE}/quote?${params}`, { headers });
+      const res = await fetch(`${API_BASE}/quote?${params}`);
       const data = await res.json();
 
       const provider = new ethers.providers.Web3Provider(window.ethereum);
