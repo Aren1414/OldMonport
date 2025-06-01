@@ -3,17 +3,12 @@ import { ethers } from "ethers";
 import { abi as erc20Abi } from "../abis/ERC20.json";
 import { abi as routerAbi } from "../abis/Router.json";
 import TokenSelector from "./TokenSelector";
-import { connectWallet, switchToMonadTestnet } from "../utils/wallet";
+import { connectWallet, switchToMonadNetwork } from "../utils/wallet";
 
-const provider = typeof window !== "undefined" && window.ethereum
-  ? new ethers.BrowserProvider(window.ethereum)
-  : null;
-
-const MONAD_RPC = "https://testnet-rpc.monad.xyz/";
 const MONAD_NATIVE_TOKEN = {
   address: "0x0000000000000000000000000000000000000000",
   symbol: "MONAD",
-  decimals: 18
+  decimals: 18,
 };
 
 const tokenAddresses = [
@@ -25,7 +20,7 @@ const tokenAddresses = [
   "0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701",
   "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea",
   "0xB5a30b0FDc5EA94A52fDc42e3E9760Cb8449Fb37",
-  "0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d"
+  "0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d",
 ];
 
 const routerAddress = "0x3108E20b0Da8b267DaA13f538964940C6eBaCCB2";
@@ -33,6 +28,7 @@ const queryAddress = "0x1C74Dd2DF010657510715244DA10ba19D1F3D2B7";
 
 export default function SwapTab() {
   const [wallet, setWallet] = useState(null);
+  const [walletAddress, setWalletAddress] = useState(null);
   const [tokens, setTokens] = useState([]);
   const [fromToken, setFromToken] = useState(null);
   const [toToken, setToToken] = useState(null);
@@ -45,9 +41,18 @@ export default function SwapTab() {
   }, []);
 
   async function init() {
-    await switchToMonadTestnet();
+    await switchToMonadNetwork();
     const signer = await connectWallet();
+    if (!signer) return;
+
     setWallet(signer);
+    try {
+      const address = await signer.getAddress();
+      setWalletAddress(address);
+    } catch {
+      setWalletAddress(null);
+    }
+
     const loadedTokens = await Promise.all(
       tokenAddresses.map(async (addr) => {
         if (addr === MONAD_NATIVE_TOKEN.address) return MONAD_NATIVE_TOKEN;
@@ -61,28 +66,36 @@ export default function SwapTab() {
         }
       })
     );
-    setTokens(loadedTokens.filter(Boolean));
-    setFromToken(loadedTokens[0]);
-    setToToken(loadedTokens[1]);
+
+    const filteredTokens = loadedTokens.filter(Boolean);
+    setTokens(filteredTokens);
+
+    setFromToken(filteredTokens[0] || null);
+    setToToken(filteredTokens[1] || null);
   }
 
   async function getTokenBalance(token) {
-    if (!wallet || !token) return "0";
+    if (!wallet || !walletAddress || !token) return "0";
     if (token.address === MONAD_NATIVE_TOKEN.address) {
-      const balance = await wallet.provider.getBalance(wallet.address);
+      const balance = await wallet.provider.getBalance(walletAddress);
       return ethers.formatUnits(balance, 18);
     }
     const contract = new ethers.Contract(token.address, erc20Abi, wallet);
-    const balance = await contract.balanceOf(wallet.address);
+    const balance = await contract.balanceOf(walletAddress);
     return ethers.formatUnits(balance, token.decimals);
   }
 
   async function estimateSwapOutAmount() {
-    if (!fromToken || !toToken || !fromAmount || !wallet) return;
+    if (!fromToken || !toToken || !fromAmount || !wallet) {
+      setToAmount("");
+      return;
+    }
     try {
-      const queryContract = new ethers.Contract(queryAddress, [
-        "function findOptimalSwap(uint256 amountIn, address tokenIn, address tokenOut) view returns (uint256 amountOut)"
-      ], wallet);
+      const queryContract = new ethers.Contract(
+        queryAddress,
+        ["function findOptimalSwap(uint256 amountIn, address tokenIn, address tokenOut) view returns (uint256 amountOut)"],
+        wallet
+      );
       const amountInRaw = ethers.parseUnits(fromAmount, fromToken.decimals);
       const out = await queryContract.findOptimalSwap(amountInRaw, fromToken.address, toToken.address);
       setToAmount(ethers.formatUnits(out, toToken.decimals));
@@ -95,23 +108,22 @@ export default function SwapTab() {
     if (!wallet || !fromToken || !toToken || !fromAmount) return;
     try {
       setLoading(true);
+
       const amountInRaw = ethers.parseUnits(fromAmount, fromToken.decimals);
       const router = new ethers.Contract(routerAddress, routerAbi, wallet);
+
       if (fromToken.address !== MONAD_NATIVE_TOKEN.address) {
         const tokenContract = new ethers.Contract(fromToken.address, erc20Abi, wallet);
-        const allowance = await tokenContract.allowance(wallet.address, routerAddress);
-        if (allowance < amountInRaw) {
-          const tx = await tokenContract.approve(routerAddress, amountInRaw);
-          await tx.wait();
+        const allowance = await tokenContract.allowance(walletAddress, routerAddress);
+        if (allowance.lt(amountInRaw)) {
+          const txApprove = await tokenContract.approve(routerAddress, amountInRaw);
+          await txApprove.wait();
         }
       }
-      const tx = await router.swap(
-        fromToken.address,
-        toToken.address,
-        amountInRaw,
-        wallet.address
-      );
-      await tx.wait();
+
+      const txSwap = await router.swap(fromToken.address, toToken.address, amountInRaw, walletAddress);
+      await txSwap.wait();
+
       setFromAmount("");
       setToAmount("");
     } catch (err) {
