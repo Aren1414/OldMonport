@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { ethers } from "ethers";
+import { Contract, BrowserProvider, parseUnits } from "ethers";
 import { NFTStorage, File } from "nft.storage";
 import monportAbi from "../abis/MonPortFactory.json";
 import { MONPORT_FACTORY_ADDRESS } from "../utils/contracts";
@@ -14,9 +14,9 @@ const DeployTab = () => {
 
   const connectWallet = async () => {
     if (window.ethereum) {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
+      const provider = new BrowserProvider(window.ethereum);  //
       await provider.send("eth_requestAccounts", []);
-      const signer = provider.getSigner();
+      const signer = await provider.getSigner();
       const address = await signer.getAddress();
       setWalletAddress(address);
     }
@@ -36,12 +36,12 @@ const DeployTab = () => {
         image: new File([file], file.name, { type: file.type }),
       });
 
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const signer = provider.getSigner();
-      const contract = new ethers.Contract(MONPORT_FACTORY_ADDRESS, monportAbi, signer);
+      const provider = new BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+      const contract = new Contract(MONPORT_FACTORY_ADDRESS, monportAbi, signer); //
 
-      const value = ethers.utils.parseUnits("0.5", 18);
-      const tx = await contract.deployCustomNFT(metadata.url, name, ethers.utils.parseUnits(price, 18), {
+      const value = parseUnits("0.5", 18); //
+      const tx = await contract.deployCustomNFT(metadata.url, name, parseUnits(price, 18), {
         value,
       });
 
