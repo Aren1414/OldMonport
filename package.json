@@ -4,7 +4,6 @@
   "private": true,
   "dependencies": {
     "@crocswap-libs/sdk": "^2.0.14",
-    "@kuru-labs/kuru-sdk": "^0.0.52",
     "@svgr/plugin-svgo": "^6.5.1",
     "@svgr/webpack": "^6.5.1",
     "css-select": "^4.3.0",
@@ -42,8 +41,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "devDependencies": {
-    "typescript": "^5.8.3"
   }
 }
