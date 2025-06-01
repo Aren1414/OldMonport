@@ -8,7 +8,7 @@
     "@svgr/plugin-svgo": "^6.5.1",
     "@svgr/webpack": "^6.5.1",
     "css-select": "^4.3.0",
-    "ethers": "^6.14.3",
+    "ethers": "^5.8.0",
     "nft.storage": "^6.0.0",
     "nth-check": "^2.0.1",
     "postcss": "^8.4.31",
