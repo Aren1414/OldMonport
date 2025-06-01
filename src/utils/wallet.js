@@ -1,3 +1,5 @@
+import { ethers } from "ethers";
+
 const MONAD_CHAIN_ID = "0x279f"; // 10143 in hex
 
 const isOnMonad = async () => {
@@ -52,16 +54,13 @@ export const connectWallet = async () => {
   try {
     await switchToMonadNetwork();
 
-    const accounts = await window.ethereum.request({
-      method: "eth_requestAccounts",
-    });
+    const provider = new ethers.providers.Web3Provider(window.ethereum);
 
-    if (!accounts || accounts.length === 0) {
-      alert("No wallet accounts found");
-      return null;
-    }
+    await provider.send("eth_requestAccounts", []);
 
-    return accounts[0];
+    const signer = provider.getSigner();
+
+    return signer;  // Return signer instead of address
   } catch (err) {
     console.error("Wallet connection error:", err);
     alert("Wallet connection failed");
