@@ -1,13 +1,23 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { connectWallet } from "../utils/wallet";
-import { getTokenSymbol, getTokenBalance } from "../utils/erc20";
+import { abi as erc20Abi } from "./abis/ERC20.json";
+import { abi as routerAbi } from "./abis/CrocSwapDex.json";
+import TokenSelector from "./TokenSelector";
+import { connectWallet, switchToMonadTestnet } from "./wallet";
 
-const CHAIN_ID = "10143";
-const API_BASE = "https://tourmaline-periwinkle-airmail.glitch.me/https://v2.api.0x.org/swap";
+const provider = typeof window !== "undefined" && window.ethereum
+  ? new ethers.BrowserProvider(window.ethereum)
+  : null;
 
-const tokenList = [
-  "0x0000000000000000000000000000000000000000",
+const MONAD_RPC = "https://testnet-rpc.monad.xyz/";
+const MONAD_NATIVE_TOKEN = {
+  address: "0x0000000000000000000000000000000000000000",
+  symbol: "MONAD",
+  decimals: 18
+};
+
+const tokenAddresses = [
+  MONAD_NATIVE_TOKEN.address,
   "0xb2f82D0f38dc453D596Ad40A37799446Cc89274A",
   "0xE0590015A873bF326bd645c3E1266d4db41C4E6B",
   "0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50",
@@ -18,66 +28,134 @@ const tokenList = [
   "0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d"
 ];
 
-const SwapTab = () => {
-  const [fromToken, setFromToken] = useState(tokenList[0]);
-  const [toToken, setToToken] = useState(tokenList[1]);
+const routerAddress = "0x3108E20b0Da8b267DaA13f538964940C6eBaCCB2";
+const queryAddress = "0x1C74Dd2DF010657510715244DA10ba19D1F3D2B7";
+
+export default function SwapTab() {
+  const [wallet, setWallet] = useState(null);
+  const [tokens, setTokens] = useState([]);
+  const [fromToken, setFromToken] = useState(null);
+  const [toToken, setToToken] = useState(null);
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
-  const [walletAddress, setWalletAddress] = useState<string | null>(null);
-  const [tokenSymbols, setTokenSymbols] = useState<{ [key: string]: string }>({});
-  const [tokenBalances, setTokenBalances] = useState<{ [key: string]: string }>({});
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    const init = async () => {
-      try {
-        const address = await connectWallet();
-        setWalletAddress(address);
-
-        const symbols: { [key: string]: string } = {};
-        const balances: { [key: string]: string } = {};
-
-        for (const token of tokenList) {
-          symbols[token] = await getTokenSymbol(token, address!);
-          balances[token] = await getTokenBalance(token, address!);
-        }
-
-        setTokenSymbols(symbols);
-        setTokenBalances(balances);
-      } catch (err) {
-        console.error(err);
-        setError("Initialization failed");
-      }
-    };
-
     init();
   }, []);
 
+  async function init() {
+    await switchToMonadTestnet();
+    const signer = await connectWallet();
+    setWallet(signer);
+    const loadedTokens = await Promise.all(
+      tokenAddresses.map(async (addr) => {
+        if (addr === MONAD_NATIVE_TOKEN.address) return MONAD_NATIVE_TOKEN;
+        try {
+          const contract = new ethers.Contract(addr, erc20Abi, signer);
+          const symbol = await contract.symbol();
+          const decimals = await contract.decimals();
+          return { address: addr, symbol, decimals };
+        } catch (e) {
+          return null;
+        }
+      })
+    );
+    setTokens(loadedTokens.filter(Boolean));
+    setFromToken(loadedTokens[0]);
+    setToToken(loadedTokens[1]);
+  }
+
+  async function getTokenBalance(token) {
+    if (!wallet || !token) return "0";
+    if (token.address === MONAD_NATIVE_TOKEN.address) {
+      const balance = await wallet.provider.getBalance(wallet.address);
+      return ethers.formatUnits(balance, 18);
+    }
+    const contract = new ethers.Contract(token.address, erc20Abi, wallet);
+    const balance = await contract.balanceOf(wallet.address);
+    return ethers.formatUnits(balance, token.decimals);
+  }
+
+  async function estimateSwapOutAmount() {
+    if (!fromToken || !toToken || !fromAmount || !wallet) return;
+    try {
+      const queryContract = new ethers.Contract(queryAddress, [
+        "function findOptimalSwap(uint256 amountIn, address tokenIn, address tokenOut) view returns (uint256 amountOut)"
+      ], wallet);
+      const amountInRaw = ethers.parseUnits(fromAmount, fromToken.decimals);
+      const out = await queryContract.findOptimalSwap(amountInRaw, fromToken.address, toToken.address);
+      setToAmount(ethers.formatUnits(out, toToken.decimals));
+    } catch (err) {
+      setToAmount("0");
+    }
+  }
+
+  async function performSwap() {
+    if (!wallet || !fromToken || !toToken || !fromAmount) return;
+    try {
+      setLoading(true);
+      const amountInRaw = ethers.parseUnits(fromAmount, fromToken.decimals);
+      const router = new ethers.Contract(routerAddress, routerAbi, wallet);
+      if (fromToken.address !== MONAD_NATIVE_TOKEN.address) {
+        const tokenContract = new ethers.Contract(fromToken.address, erc20Abi, wallet);
+        const allowance = await tokenContract.allowance(wallet.address, routerAddress);
+        if (allowance < amountInRaw) {
+          const tx = await tokenContract.approve(routerAddress, amountInRaw);
+          await tx.wait();
+        }
+      }
+      const tx = await router.swap(
+        fromToken.address,
+        toToken.address,
+        amountInRaw,
+        wallet.address
+      );
+      await tx.wait();
+      setFromAmount("");
+      setToAmount("");
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   useEffect(() => {
-    const fetchPrice = async () => {
-      if (!fromAmount || !walletAddress) return;
-      if (isNaN(Number(fromAmount)) || parseFloat(fromAmount) <= 0) {
-        setError("Invalid amount");
-        return;
-      }
+    estimateSwapOutAmount();
+  }, [fromAmount, fromToken, toToken]);
 
-      const sellAmount = ethers.utils.parseUnits(fromAmount, 18).toString();
-      const params = new URLSearchParams({
-        chainId: CHAIN_ID,
-        sellToken: fromToken,
-        buyToken: toToken,
-        sellAmount,
-        takerAddress: walletAddress
-      });
+  return (
+    <div className="p-4">
+      <TokenSelector
+        label="From"
+        tokens={tokens}
+        selected={fromToken}
+        onChange={setFromToken}
+        amount={fromAmount}
+        onAmountChange={setFromAmount}
+        wallet={wallet}
+      />
 
-      try {
-        const res = await fetch(`${API_BASE}/price?${params}`);
-        const data = await res.json();
-        setToAmount(ethers.utils.formatUnits(data.buyAmount, 18));
-        setError(null);
-      } catch (err) {
-        console.error("Price fetch error:", err);
-        setError("Price fetch failed");
-        setToAmount("");
-      }
-   51
+      <div className="text-center my-2">⇅</div>
+
+      <TokenSelector
+        label="To"
+        tokens={tokens}
+        selected={toToken}
+        onChange={setToToken}
+        amount={toAmount}
+        disabled
+        wallet={wallet}
+      />
+
+      <button
+        className="mt-4 w-full bg-blue-600 text-white py-2 rounded"
+        onClick={performSwap}
+        disabled={loading}
+      >
+        {loading ? "Swapping..." : "Swap"}
+      </button>
+    </div>
+  );
+}
