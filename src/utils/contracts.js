@@ -1,6 +1,6 @@
 // ABIs
 import WelcomeNFT_ABI from "../abis/WelcomeNFT.json";
-import CrocSwap_ABI from "../abis/CrocSwapDex.json";
+import CrocSwap_ABI from "../abis/Router.json";
 import MonPortFactory_ABI from "../abis/MonPortFactory.json";
 
 // Contract addresses
