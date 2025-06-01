@@ -4,6 +4,7 @@ import erc20Abi from "../abis/ERC20.json";
 import routerAbi from "../abis/Router.json";
 import TokenSelector from "./TokenSelector";
 import { connectWallet, switchToMonadNetwork } from "../utils/wallet";
+import "../styles/App.css";  //
 
 const MONAD_NATIVE_TOKEN = {
   address: "0x0000000000000000000000000000000000000000",
@@ -33,7 +34,7 @@ export default function SwapTab() {
   const [fromToken, setFromToken] = useState(null);
   const [toToken, setToToken] = useState(null);
   const [fromAmount, setFromAmount] = useState("");
-  const [toAmount, setToAmount] = "";
+  const [toAmount, setToAmount] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -142,31 +143,39 @@ export default function SwapTab() {
   }, [fromAmount, fromToken, toToken]);
 
   return (
-    <div className="p-4">
-      <TokenSelector
-        label="From"
-        tokens={tokens}
-        selected={fromToken}
-        onChange={setFromToken}
-        amount={fromAmount}
-        onAmountChange={setFromAmount}
-        wallet={wallet}
-      />
+    <div className="swap-tab">
+      <h2>Swap Tokens</h2>
+      
+      <div className="swap-field">
+        <TokenSelector
+          label="From"
+          tokens={tokens}
+          selected={fromToken}
+          onChange={setFromToken}
+          amount={fromAmount}
+          onAmountChange={setFromAmount}
+          wallet={wallet}
+        />
+      </div>
 
-      <div className="text-center my-2">⇅</div>
+      <div className="swap-switch">
+        <button onClick={() => { setFromToken(toToken); setToToken(fromToken); }}>⇅</button>
+      </div>
 
-      <TokenSelector
-        label="To"
-        tokens={tokens}
-        selected={toToken}
-        onChange={setToToken}
-        amount={toAmount}
-        disabled
-        wallet={wallet}
-      />
+      <div className="swap-field">
+        <TokenSelector
+          label="To"
+          tokens={tokens}
+          selected={toToken}
+          onChange={setToToken}
+          amount={toAmount}
+          disabled
+          wallet={wallet}
+        />
+      </div>
 
       <button
-        className="mt-4 w-full bg-blue-600 text-white py-2 rounded"
+        className="swap-button"
         onClick={performSwap}
         disabled={loading}
       >
