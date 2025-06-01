@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { ethers } from "ethers";
-import { abi as erc20Abi } from "../abis/ERC20.json";
+import erc20Abi from "../abis/ERC20.json";
 import { abi as routerAbi } from "../abis/Router.json";
 import TokenSelector from "./TokenSelector";
 import { connectWallet, switchToMonadNetwork } from "../utils/wallet";
