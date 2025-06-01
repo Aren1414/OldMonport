@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ethers } from "ethers";
+import { Contract, formatUnits, parseUnits, BrowserProvider } from "ethers";
 import erc20Abi from "../abis/ERC20.json";
 import { abi as routerAbi } from "../abis/Router.json";
 import TokenSelector from "./TokenSelector";
@@ -33,7 +33,7 @@ export default function SwapTab() {
   const [fromToken, setFromToken] = useState(null);
   const [toToken, setToToken] = useState(null);
   const [fromAmount, setFromAmount] = useState("");
-  const [toAmount, setToAmount] = useState("");
+  const [toAmount, setToAmount] = "";
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
@@ -57,7 +57,7 @@ export default function SwapTab() {
       tokenAddresses.map(async (addr) => {
         if (addr === MONAD_NATIVE_TOKEN.address) return MONAD_NATIVE_TOKEN;
         try {
-          const contract = new ethers.Contract(addr, erc20Abi, signer);
+          const contract = new Contract(addr, erc20Abi, signer);
           const symbol = await contract.symbol();
           const decimals = await contract.decimals();
           return { address: addr, symbol, decimals };
@@ -76,13 +76,17 @@ export default function SwapTab() {
 
   async function getTokenBalance(token) {
     if (!wallet || !walletAddress || !token) return "0";
+
+    const provider = new BrowserProvider(wallet);
+
     if (token.address === MONAD_NATIVE_TOKEN.address) {
-      const balance = await wallet.provider.getBalance(walletAddress);
-      return ethers.formatUnits(balance, 18);
+      const balance = await provider.getBalance(walletAddress);
+      return formatUnits(balance, 18);
     }
-    const contract = new ethers.Contract(token.address, erc20Abi, wallet);
+
+    const contract = new Contract(token.address, erc20Abi, wallet);
     const balance = await contract.balanceOf(walletAddress);
-    return ethers.formatUnits(balance, token.decimals);
+    return formatUnits(balance, token.decimals);
   }
 
   async function estimateSwapOutAmount() {
@@ -91,14 +95,14 @@ export default function SwapTab() {
       return;
     }
     try {
-      const queryContract = new ethers.Contract(
+      const queryContract = new Contract(
         queryAddress,
         ["function findOptimalSwap(uint256 amountIn, address tokenIn, address tokenOut) view returns (uint256 amountOut)"],
         wallet
       );
-      const amountInRaw = ethers.parseUnits(fromAmount, fromToken.decimals);
+      const amountInRaw = parseUnits(fromAmount, fromToken.decimals);
       const out = await queryContract.findOptimalSwap(amountInRaw, fromToken.address, toToken.address);
-      setToAmount(ethers.formatUnits(out, toToken.decimals));
+      setToAmount(formatUnits(out, toToken.decimals));
     } catch (err) {
       setToAmount("0");
     }
@@ -109,11 +113,11 @@ export default function SwapTab() {
     try {
       setLoading(true);
 
-      const amountInRaw = ethers.parseUnits(fromAmount, fromToken.decimals);
-      const router = new ethers.Contract(routerAddress, routerAbi, wallet);
+      const amountInRaw = parseUnits(fromAmount, fromToken.decimals);
+      const router = new Contract(routerAddress, routerAbi, wallet);
 
       if (fromToken.address !== MONAD_NATIVE_TOKEN.address) {
-        const tokenContract = new ethers.Contract(fromToken.address, erc20Abi, wallet);
+        const tokenContract = new Contract(fromToken.address, erc20Abi, wallet);
         const allowance = await tokenContract.allowance(walletAddress, routerAddress);
         if (allowance.lt(amountInRaw)) {
           const txApprove = await tokenContract.approve(routerAddress, amountInRaw);
