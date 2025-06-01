@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ethers } from "ethers";
+import { Contract, BrowserProvider } from "ethers";
 import ERC20_ABI from "../abis/ERC20.json";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -12,7 +12,7 @@ const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances,
       if (!window.ethereum || !tokenAddresses?.length) return;
 
       try {
-        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const provider = new BrowserProvider(window.ethereum);  //
         const tokenList = [];
 
         for (const address of tokenAddresses) {
@@ -20,7 +20,7 @@ const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances,
             tokenList.push({ address, symbol: "MONAD", decimals: 18 });
           } else {
             try {
-              const contract = new ethers.Contract(address, ERC20_ABI, provider);
+              const contract = new Contract(address, ERC20_ABI, provider);  //
               const symbol = await contract.symbol();
               const decimals = await contract.decimals();
               tokenList.push({ address, symbol, decimals });
