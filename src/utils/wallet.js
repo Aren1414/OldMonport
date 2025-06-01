@@ -1,36 +1,19 @@
-export const connectWallet = async () => {
-  if (!window.ethereum) {
-    alert("Please install a wallet like MetaMask");
-    return null;
-  }
+const MONAD_CHAIN_ID = "0x279f"; // 10143 in hex
 
-  try {
-    await switchToMonadNetwork();
-    const accounts = await window.ethereum.request({
-      method: "eth_requestAccounts",
-    });
-    return accounts[0];
-  } catch (err) {
-    console.error("Wallet connection error:", err);
-    return null;
-  }
-};
-
-export const getWalletAddress = async () => {
-  if (!window.ethereum) return null;
-  const accounts = await window.ethereum.request({ method: "eth_accounts" });
-  return accounts[0] || null;
+const isOnMonad = async () => {
+  const currentChainId = await window.ethereum.request({ method: "eth_chainId" });
+  return currentChainId === MONAD_CHAIN_ID;
 };
 
 export const switchToMonadNetwork = async () => {
   if (!window.ethereum) return;
 
-  const monadChainId = "0x279f"; // 10143 in hex
+  if (await isOnMonad()) return;
 
   try {
     await window.ethereum.request({
       method: "wallet_switchEthereumChain",
-      params: [{ chainId: monadChainId }],
+      params: [{ chainId: MONAD_CHAIN_ID }],
     });
   } catch (switchError) {
     if (switchError.code === 4902) {
@@ -39,7 +22,7 @@ export const switchToMonadNetwork = async () => {
           method: "wallet_addEthereumChain",
           params: [
             {
-              chainId: monadChainId,
+              chainId: MONAD_CHAIN_ID,
               chainName: "Monad Testnet",
               nativeCurrency: {
                 name: "Monad",
@@ -58,4 +41,37 @@ export const switchToMonadNetwork = async () => {
       console.error("Switch network error:", switchError);
     }
   }
+};
+
+export const connectWallet = async () => {
+  if (!window.ethereum) {
+    alert("Please install a wallet like MetaMask");
+    return null;
+  }
+
+  try {
+    await switchToMonadNetwork();
+
+    const accounts = await window.ethereum.request({
+      method: "eth_requestAccounts",
+    });
+
+    if (!accounts || accounts.length === 0) {
+      alert("No wallet accounts found");
+      return null;
+    }
+
+    return accounts[0];
+  } catch (err) {
+    console.error("Wallet connection error:", err);
+    alert("Wallet connection failed");
+    return null;
+  }
+};
+
+export const getWalletAddress = async () => {
+  if (!window.ethereum) return null;
+
+  const accounts = await window.ethereum.request({ method: "eth_accounts" });
+  return accounts[0] || null;
 };
