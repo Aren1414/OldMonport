@@ -4,7 +4,7 @@ import erc20Abi from "../abis/ERC20.json";
 import routerAbi from "../abis/Router.json";
 import TokenSelector from "./TokenSelector";
 import { connectWallet, switchToMonadNetwork } from "../utils/wallet";
-import "../styles/App.css";  //
+import "../styles/App.css";  
 
 const MONAD_NATIVE_TOKEN = {
   address: "0x0000000000000000000000000000000000000000",
@@ -31,6 +31,7 @@ export default function SwapTab() {
   const [wallet, setWallet] = useState(null);
   const [walletAddress, setWalletAddress] = useState(null);
   const [tokens, setTokens] = useState([]);
+  const [balances, setBalances] = useState({});  // 
   const [fromToken, setFromToken] = useState(null);
   const [toToken, setToToken] = useState(null);
   const [fromAmount, setFromAmount] = useState("");
@@ -71,6 +72,12 @@ export default function SwapTab() {
     const filteredTokens = loadedTokens.filter(Boolean);
     setTokens(filteredTokens);
 
+    const balanceData = {};
+    for (const token of filteredTokens) {
+      balanceData[token.address] = await getTokenBalance(token);
+    }
+    setBalances(balanceData);  // 
+
     setFromToken(filteredTokens[0] || null);
     setToToken(filteredTokens[1] || null);
   }
@@ -78,7 +85,7 @@ export default function SwapTab() {
   async function getTokenBalance(token) {
     if (!wallet || !walletAddress || !token) return "0";
 
-    const provider = new BrowserProvider(wallet);
+    const provider = new BrowserProvider(window.ethereum);  //
 
     if (token.address === MONAD_NATIVE_TOKEN.address) {
       const balance = await provider.getBalance(walletAddress);
@@ -90,97 +97,35 @@ export default function SwapTab() {
     return formatUnits(balance, token.decimals);
   }
 
-  async function estimateSwapOutAmount() {
-    if (!fromToken || !toToken || !fromAmount || !wallet) {
-      setToAmount("");
-      return;
-    }
-    try {
-      const queryContract = new Contract(
-        queryAddress,
-        ["function findOptimalSwap(uint256 amountIn, address tokenIn, address tokenOut) view returns (uint256 amountOut)"],
-        wallet
-      );
-      const amountInRaw = parseUnits(fromAmount, fromToken.decimals);
-      const out = await queryContract.findOptimalSwap(amountInRaw, fromToken.address, toToken.address);
-      setToAmount(formatUnits(out, toToken.decimals));
-    } catch (err) {
-      setToAmount("0");
-    }
-  }
-
-  async function performSwap() {
-    if (!wallet || !fromToken || !toToken || !fromAmount) return;
-    try {
-      setLoading(true);
-
-      const amountInRaw = parseUnits(fromAmount, fromToken.decimals);
-      const router = new Contract(routerAddress, routerAbi, wallet);
-
-      if (fromToken.address !== MONAD_NATIVE_TOKEN.address) {
-        const tokenContract = new Contract(fromToken.address, erc20Abi, wallet);
-        const allowance = await tokenContract.allowance(walletAddress, routerAddress);
-        if (allowance.lt(amountInRaw)) {
-          const txApprove = await tokenContract.approve(routerAddress, amountInRaw);
-          await txApprove.wait();
-        }
-      }
-
-      const txSwap = await router.swap(fromToken.address, toToken.address, amountInRaw, walletAddress);
-      await txSwap.wait();
-
-      setFromAmount("");
-      setToAmount("");
-    } catch (err) {
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => {
-    estimateSwapOutAmount();
-  }, [fromAmount, fromToken, toToken]);
-
   return (
     <div className="swap-tab">
       <h2>Swap Tokens</h2>
-      
-      <div className="swap-field">
-        <TokenSelector
-          label="From"
-          tokens={tokens}
-          selected={fromToken}
-          onChange={setFromToken}
-          amount={fromAmount}
-          onAmountChange={setFromAmount}
-          wallet={wallet}
-        />
-      </div>
+
+      <TokenSelector
+        label="From"
+        tokens={tokens}
+        selected={fromToken}
+        onChange={setFromToken}
+        amount={fromAmount}
+        onAmountChange={setFromAmount}
+        wallet={wallet}
+        balances={balances}  //
+      />
 
       <div className="swap-switch">
         <button onClick={() => { setFromToken(toToken); setToToken(fromToken); }}>⇅</button>
       </div>
 
-      <div className="swap-field">
-        <TokenSelector
-          label="To"
-          tokens={tokens}
-          selected={toToken}
-          onChange={setToToken}
-          amount={toAmount}
-          disabled
-          wallet={wallet}
-        />
-      </div>
-
-      <button
-        className="swap-button"
-        onClick={performSwap}
-        disabled={loading}
-      >
-        {loading ? "Swapping..." : "Swap"}
-      </button>
+      <TokenSelector
+        label="To"
+        tokens={tokens}
+        selected={toToken}
+        onChange={setToToken}
+        amount={toAmount}
+        disabled
+        wallet={wallet}
+        balances={balances}  //
+      />
     </div>
   );
-}
+        }
