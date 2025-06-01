@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from "react";
-import { ethers } from "ethers";
+import { BrowserProvider, Contract, formatEther } from "ethers";
 import { getFarcasterProfile } from "../utils/farcaster";
 import "../styles/App.css";
 
@@ -12,17 +12,22 @@ const ProfileTab = () => {
 
   const connectWallet = useCallback(async () => {
     if (window.ethereum) {
-      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
-      setWalletAddress(accounts[0]);
+      try {
+        const provider = new BrowserProvider(window.ethereum); //
+        const accounts = await window.ethereum.request({ method: "eth_requestAccounts" });
+        setWalletAddress(accounts[0] || "");
+      } catch (err) {
+        console.error("Failed to connect wallet:", err);
+      }
     }
   }, []);
 
   const fetchBalance = useCallback(async () => {
     if (!walletAddress) return;
     try {
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const bal = await provider.getBalance(walletAddress);
-      setBalance(ethers.utils.formatEther(bal));
+      const provider = new BrowserProvider(window.ethereum);
+      const balanceRaw = await provider.getBalance(walletAddress);
+      setBalance(formatEther(balanceRaw)); //
     } catch (e) {
       console.error("Balance fetch error:", e);
     }
@@ -32,9 +37,9 @@ const ProfileTab = () => {
     if (!walletAddress) return;
     try {
       const profile = await getFarcasterProfile(walletAddress);
-      setUserData(profile);
-      setReferrals(profile.referrals || 0);
-      setPoints(profile.points || 0);
+      setUserData(profile || null);
+      setReferrals(profile?.referrals || 0);
+      setPoints(profile?.points || 0);
     } catch (e) {
       console.error("Error fetching Farcaster profile:", e);
     }
@@ -54,11 +59,13 @@ const ProfileTab = () => {
   return (
     <div className="tab profile-tab">
       <h2>Your Profile</h2>
-      {userData && (
+      {userData ? (
         <div className="farcaster-info">
-          <img src={userData.avatar} alt="avatar" className="avatar" />
+          <img src={userData.avatar || "/default-avatar.png"} alt="avatar" className="avatar" />
           <h3>@{userData.username}</h3>
         </div>
+      ) : (
+        <p>No profile data available.</p>
       )}
       <p><strong>Wallet:</strong> {walletAddress}</p>
       <p><strong>Balance:</strong> {balance} MON</p>
