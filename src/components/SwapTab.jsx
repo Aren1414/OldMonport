@@ -3,7 +3,7 @@ import { ethers } from "ethers";
 import { abi as erc20Abi } from "./abis/ERC20.json";
 import { abi as routerAbi } from "./abis/Router.json";
 import TokenSelector from "./TokenSelector";
-import { connectWallet, switchToMonadTestnet } from "./wallet";
+import { connectWallet, switchToMonadTestnet } from "../wallet";
 
 const provider = typeof window !== "undefined" && window.ethereum
   ? new ethers.BrowserProvider(window.ethereum)
