@@ -3,33 +3,28 @@
   "version": "1.0.0",
   "private": true,
   "dependencies": {
-    "@crocswap-libs/sdk": "^2.0.14",
-    "@kuru-labs/kuru-sdk": "^0.0.52",
-    "@svgr/plugin-svgo": "^6.5.1",
-    "@svgr/webpack": "^6.5.1",
-    "css-select": "^4.3.0",
-    "ethers": "^6.14.3",
-    "nft.storage": "^6.0.0",
-    "nth-check": "^2.0.1",
-    "postcss": "^8.4.31",
+    "ethers": "^5.7.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-scripts": "^5.0.1",
-    "resolve-url-loader": "^5.0.0",
-    "svgo": "^2.8.0"
+    "nft.storage": "^6.0.0",
+    "nth-check": "^2.0.1",
+    "css-select": "^4.3.0",
+    "svgo": "^2.8.0",
+    "@svgr/plugin-svgo": "^6.5.1",
+    "@svgr/webpack": "^6.5.1",
+    "postcss": "^8.4.31",
+    "resolve-url-loader": "^5.0.0"
   },
   "scripts": {
     "start": "react-scripts start",
+    "dev": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "dev": "react-scripts start"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
-    "extends": [
-      "react-app",
-      "react-app/jest"
-    ]
+    "extends": ["react-app", "react-app/jest"]
   },
   "browserslist": {
     "production": [
@@ -43,4 +38,5 @@
       "last 1 safari version"
     ]
   }
-}
+}0
+
