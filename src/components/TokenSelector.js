@@ -4,11 +4,11 @@ import ERC20_ABI from "../abis/ERC20.json";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
 
-const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances }) => {
+const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances, disabled }) => {
   const [tokens, setTokens] = useState([]);
 
   useEffect(() => {
-    const fetchTokenSymbols = async () => {
+    const fetchTokenData = async () => {
       if (!window.ethereum || !tokenAddresses?.length) return;
 
       try {
@@ -17,15 +17,16 @@ const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances 
 
         for (const address of tokenAddresses) {
           if (address === ZERO_ADDRESS) {
-            tokenList.push({ address, symbol: "MON" });
+            tokenList.push({ address, symbol: "MONAD", decimals: 18 });
           } else {
             try {
               const contract = new ethers.Contract(address, ERC20_ABI, provider);
               const symbol = await contract.symbol();
-              tokenList.push({ address, symbol });
+              const decimals = await contract.decimals();
+              tokenList.push({ address, symbol, decimals });
             } catch (error) {
-              console.warn(`Failed to fetch symbol for token: ${address}`);
-              tokenList.push({ address, symbol: "UNKNOWN" });
+              console.warn(`Failed to fetch symbol/decimals for token: ${address}`);
+              tokenList.push({ address, symbol: "UNKNOWN", decimals: 18 });
             }
           }
         }
@@ -36,19 +37,24 @@ const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances 
       }
     };
 
-    fetchTokenSymbols();
+    fetchTokenData();
   }, [tokenAddresses]);
 
   return (
     <select
-      value={selectedToken}
+      value={selectedToken || ""}
       onChange={(e) => onSelectToken(e.target.value)}
+      disabled={disabled}
       className="token-select"
     >
-      <option value="">Select Token</option>
+      <option value="" disabled>
+        Select Token
+      </option>
       {tokens.map(({ address, symbol }) => {
-        const balance = balances?.[address] || "0";
-        const formatted = Number(balance).toFixed(4);
+        const balanceRaw = balances?.[address] || "0";
+        const balance = Number(balanceRaw);
+        const formatted = balance ? balance.toFixed(4) : "0.0000";
+
         return (
           <option key={address} value={address}>
             {symbol} - {formatted}
