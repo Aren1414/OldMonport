@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { ethers, Contract } from "ethers";
+import { ethers } from "ethers";
 import ERC20_ABI from "../abis/ERC20.json";
 
 const ZERO_ADDRESS = "0x0000000000000000000000000000000000000000";
@@ -8,29 +8,35 @@ const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances 
   const [tokens, setTokens] = useState([]);
 
   useEffect(() => {
-    const fetchTokens = async () => {
-      if (!window.ethereum) return;
-      const provider = new ethers.providers.Web3Provider(window.ethereum);
-      const list = [];
+    const fetchTokenSymbols = async () => {
+      if (!window.ethereum || !tokenAddresses?.length) return;
 
-      for (const address of tokenAddresses) {
-        if (address === ZERO_ADDRESS) {
-          list.push({ address, symbol: "MON" });
-        } else {
-          try {
-            const contract = new ethers.Contract(address, ERC20_ABI, provider);
-            const symbol = await contract.symbol();
-            list.push({ address, symbol });
-          } catch {
-            list.push({ address, symbol: "UNKNOWN" });
+      try {
+        const provider = new ethers.providers.Web3Provider(window.ethereum);
+        const tokenList = [];
+
+        for (const address of tokenAddresses) {
+          if (address === ZERO_ADDRESS) {
+            tokenList.push({ address, symbol: "MON" });
+          } else {
+            try {
+              const contract = new ethers.Contract(address, ERC20_ABI, provider);
+              const symbol = await contract.symbol();
+              tokenList.push({ address, symbol });
+            } catch (error) {
+              console.warn(`Failed to fetch symbol for token: ${address}`);
+              tokenList.push({ address, symbol: "UNKNOWN" });
+            }
           }
         }
-      }
 
-      setTokens(list);
+        setTokens(tokenList);
+      } catch (err) {
+        console.error("Provider error:", err);
+      }
     };
 
-    fetchTokens();
+    fetchTokenSymbols();
   }, [tokenAddresses]);
 
   return (
@@ -40,11 +46,15 @@ const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances 
       className="token-select"
     >
       <option value="">Select Token</option>
-      {tokens.map(({ address, symbol }) => (
-        <option key={address} value={address}>
-          {symbol} - {balances?.[address] ? Number(balances[address]).toFixed(4) : "0.0000"}
-        </option>
-      ))}
+      {tokens.map(({ address, symbol }) => {
+        const balance = balances?.[address] || "0";
+        const formatted = Number(balance).toFixed(4);
+        return (
+          <option key={address} value={address}>
+            {symbol} - {formatted}
+          </option>
+        );
+      })}
     </select>
   );
 };
