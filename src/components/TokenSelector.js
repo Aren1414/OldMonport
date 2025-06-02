@@ -13,7 +13,7 @@ const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances,
 
       try {
         const provider = new BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();  //
+        const signer = await provider.getSigner();
         const tokenList = [];
 
         for (const address of tokenAddresses) {
@@ -21,7 +21,7 @@ const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances,
             tokenList.push({ address, symbol: "MONAD", decimals: 18 });
           } else {
             try {
-              const contract = new Contract(address, ERC20_ABI, signer);  //
+              const contract = new Contract(address, ERC20_ABI, signer);
               const symbol = await contract.symbol();
               const decimals = await contract.decimals();
               tokenList.push({ address, symbol, decimals });
@@ -32,6 +32,7 @@ const TokenSelector = ({ selectedToken, onSelectToken, tokenAddresses, balances,
           }
         }
 
+        console.log("Fetched tokens list:", tokenList);
         setTokens(tokenList);
       } catch (err) {
         console.error("Provider error:", err);
