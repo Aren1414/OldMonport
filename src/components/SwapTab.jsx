@@ -68,7 +68,7 @@ export default function SwapTab() {
           return { address: addr, symbol, decimals };
         } catch (e) {
           console.error(`Error loading token ${addr}:`, e);
-          return null;
+          return { address: addr, symbol: "UNKNOWN", decimals: 18 }; // جلوگیری از قطع عملیات
         }
       })
     );
