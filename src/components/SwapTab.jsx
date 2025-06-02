@@ -8,7 +8,7 @@ import "../styles/App.css";
 
 const MONAD_NATIVE_TOKEN = {
   address: "0x0000000000000000000000000000000000000000",
-  symbol: "MONAD",
+  symbol: "MON",  
   decimals: 18,
 };
 
@@ -104,69 +104,54 @@ export default function SwapTab() {
     return formatUnits(balance, token.decimals);
   }
 
-  async function performSwap() {
-    if (!wallet || !fromToken || !toToken || !fromAmount) return;
-    try {
-      setLoading(true);
-
-      const amountInRaw = parseUnits(fromAmount, fromToken.decimals);
-      const router = new Contract(routerAddress, routerAbi, wallet);
-      console.log("Attempting swap with:", { fromToken, toToken, amountInRaw, poolIdx, limitPrice, minOut, isBuy });
-
-      if (fromToken.address !== MONAD_NATIVE_TOKEN.address) {
-        const tokenContract = new Contract(fromToken.address, erc20Abi, wallet);
-        const allowance = await tokenContract.allowance(walletAddress, routerAddress);
-        console.log("Allowance:", allowance.toString());
-
-        if (allowance.lt(amountInRaw)) {
-          console.log("Approving tokens...");
-          const txApprove = await tokenContract.approve(routerAddress, amountInRaw);
-          await txApprove.wait();
-        }
-      }
-
-      const txSwap = await router.swap(
-        fromToken.address,
-        toToken.address,
-        poolIdx,
-        isBuy,
-        true,
-        amountInRaw,
-        0,
-        limitPrice,
-        minOut,
-        0
-      );
-
-      await txSwap.wait();
-      console.log("Swap transaction success:", txSwap);
-
-      setFromAmount("");
-      setToAmount("");
-    } catch (err) {
-      console.error("Swap error:", err);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   return (
     <div className="swap-tab">
       <h2>Swap Tokens</h2>
-      <TokenSelector
-        selectedToken={fromToken}
-        onSelectToken={setFromToken}
-        tokenAddresses={tokenAddresses}
-        balances={balances}
-      />
-      <TokenSelector
-        selectedToken={toToken}
-        onSelectToken={setToToken}
-        tokenAddresses={tokenAddresses}
-        balances={balances}
-        disabled
-      />
-      <button className="swap-button" onClick={performSwap} disabled={loading}>
+
+      <div className="swap-field">
+        <TokenSelector
+          label="From"
+          tokens={tokens}
+          selected={fromToken}
+          onChange={setFromToken}
+          amount={fromAmount}
+          onAmountChange={setFromAmount}
+          wallet={wallet}
+          balances={balances}
+        />
+        <input 
+          type="number" 
+          placeholder="Enter amount" 
+          value={fromAmount} 
+          onChange={(e) => setFromAmount(e.target.value)} 
+          className="amount-input"
+        />
+      </div>
+
+      <div className="swap-switch">
+        <button onClick={() => { setFromToken(toToken); setToToken(fromToken); }}>⇅</button>
+      </div>
+
+      <div className="swap-field">
+        <TokenSelector
+          label="To"
+          tokens={tokens}
+          selected={toToken}
+          onChange={setToToken}
+          amount={toAmount}
+          wallet={wallet}
+          balances={balances}
+        />
+        <input 
+          type="text" 
+          placeholder="Estimated output" 
+          value={toAmount} 
+          disabled 
+          className="amount-display"
+        />
+      </div>
+
+      <button className="swap-button" disabled={loading}>
         {loading ? "Swapping..." : "Swap"}
       </button>
     </div>
