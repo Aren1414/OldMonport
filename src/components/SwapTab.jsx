@@ -25,7 +25,6 @@ const tokenAddresses = [
 ];
 
 const routerAddress = "0x3108E20b0Da8b267DaA13f538964940C6eBaCCB2";
-const queryAddress = "0x1C74Dd2DF010657510715244DA10ba19D1F3D2B7";
 
 export default function SwapTab() {
   const [wallet, setWallet] = useState(null);
@@ -69,6 +68,8 @@ export default function SwapTab() {
       })
     );
 
+    console.log("Fetched tokens:", loadedTokens); // بررسی مقدار دریافت‌شده
+
     const filteredTokens = loadedTokens.filter(Boolean);
     setTokens(filteredTokens);
 
@@ -76,6 +77,8 @@ export default function SwapTab() {
     for (const token of filteredTokens) {
       balanceData[token.address] = await getTokenBalance(token);
     }
+
+    console.log("Balance Data:", balanceData); // بررسی مقدار بالانس توکن‌ها
     setBalances(balanceData);
 
     setFromToken(filteredTokens[0] || null);
@@ -104,11 +107,15 @@ export default function SwapTab() {
 
       const amountInRaw = parseUnits(fromAmount, fromToken.decimals);
       const router = new Contract(routerAddress, routerAbi, wallet);
+      console.log("Attempting swap with:", { fromToken, toToken, amountInRaw });
 
       if (fromToken.address !== MONAD_NATIVE_TOKEN.address) {
         const tokenContract = new Contract(fromToken.address, erc20Abi, wallet);
         const allowance = await tokenContract.allowance(walletAddress, routerAddress);
+        console.log("Allowance:", allowance.toString());
+
         if (allowance.lt(amountInRaw)) {
+          console.log("Approving tokens...");
           const txApprove = await tokenContract.approve(routerAddress, amountInRaw);
           await txApprove.wait();
         }
@@ -116,11 +123,12 @@ export default function SwapTab() {
 
       const txSwap = await router.swap(fromToken.address, toToken.address, amountInRaw, walletAddress);
       await txSwap.wait();
+      console.log("Swap transaction success:", txSwap);
 
       setFromAmount("");
       setToAmount("");
     } catch (err) {
-      console.error(err);
+      console.error("Swap error:", err);
     } finally {
       setLoading(false);
     }
@@ -162,7 +170,7 @@ export default function SwapTab() {
 
       <button
         className="swap-button"
-        onClick={performSwap}  //
+        onClick={performSwap}
         disabled={loading}
       >
         {loading ? "Swapping..." : "Swap"}
