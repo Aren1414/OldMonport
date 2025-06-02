@@ -88,6 +88,68 @@ export default function SwapTab() {
     setToToken(loadedTokens[1] || null);
   }
 
+  async function getTokenBalance(token) {
+    if (!wallet || !walletAddress || !token) return "0";
+
+    const provider = new BrowserProvider(window.ethereum);
+
+    if (token.address === MONAD_NATIVE_TOKEN.address) {
+      const balance = await provider.getBalance(walletAddress);
+      return formatUnits(balance, 18);
+    }
+
+    const contract = new Contract(token.address, erc20Abi, wallet);
+    const balance = await contract.balanceOf(walletAddress);
+    console.log(`Balance of ${token.symbol}:`, formatUnits(balance, token.decimals));
+    return formatUnits(balance, token.decimals);
+  }
+
+  async function performSwap() {
+    if (!wallet || !fromToken || !toToken || !fromAmount) return;
+    try {
+      setLoading(true);
+
+      const amountInRaw = parseUnits(fromAmount, fromToken.decimals);
+      const router = new Contract(routerAddress, routerAbi, wallet);
+      console.log("Attempting swap with:", { fromToken, toToken, amountInRaw, poolIdx, limitPrice, minOut, isBuy });
+
+      if (fromToken.address !== MONAD_NATIVE_TOKEN.address) {
+        const tokenContract = new Contract(fromToken.address, erc20Abi, wallet);
+        const allowance = await tokenContract.allowance(walletAddress, routerAddress);
+        console.log("Allowance:", allowance.toString());
+
+        if (allowance.lt(amountInRaw)) {
+          console.log("Approving tokens...");
+          const txApprove = await tokenContract.approve(routerAddress, amountInRaw);
+          await txApprove.wait();
+        }
+      }
+
+      const txSwap = await router.swap(
+        fromToken.address,
+        toToken.address,
+        poolIdx,
+        isBuy,
+        true,
+        amountInRaw,
+        0,
+        limitPrice,
+        minOut,
+        0
+      );
+
+      await txSwap.wait();
+      console.log("Swap transaction success:", txSwap);
+
+      setFromAmount("");
+      setToAmount("");
+    } catch (err) {
+      console.error("Swap error:", err);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   return (
     <div className="swap-tab">
       <h2>Swap Tokens</h2>
@@ -104,6 +166,9 @@ export default function SwapTab() {
         balances={balances}
         disabled
       />
+      <button className="swap-button" onClick={performSwap} disabled={loading}>
+        {loading ? "Swapping..." : "Swap"}
+      </button>
     </div>
   );
 }
