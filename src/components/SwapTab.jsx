@@ -36,6 +36,10 @@ export default function SwapTab() {
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
   const [loading, setLoading] = useState(false);
+  const [poolIdx, setPoolIdx] = useState(36000); 
+  const [limitPrice, setLimitPrice] = useState(0); 
+  const [minOut, setMinOut] = useState(0);         
+  const [isBuy, setIsBuy] = useState(true);        
 
   useEffect(() => {
     init();
@@ -63,12 +67,13 @@ export default function SwapTab() {
           const decimals = await contract.decimals();
           return { address: addr, symbol, decimals };
         } catch (e) {
+          console.error(`Error loading token ${addr}:`, e);
           return null;
         }
       })
     );
 
-    console.log("Fetched tokens:", loadedTokens); // بررسی مقدار دریافت‌شده
+    console.log("Fetched tokens:", loadedTokens);
 
     const filteredTokens = loadedTokens.filter(Boolean);
     setTokens(filteredTokens);
@@ -78,7 +83,7 @@ export default function SwapTab() {
       balanceData[token.address] = await getTokenBalance(token);
     }
 
-    console.log("Balance Data:", balanceData); // بررسی مقدار بالانس توکن‌ها
+    console.log("Balance Data:", balanceData);
     setBalances(balanceData);
 
     setFromToken(filteredTokens[0] || null);
@@ -97,6 +102,7 @@ export default function SwapTab() {
 
     const contract = new Contract(token.address, erc20Abi, wallet);
     const balance = await contract.balanceOf(walletAddress);
+    console.log(`Balance of ${token.symbol}:`, formatUnits(balance, token.decimals));
     return formatUnits(balance, token.decimals);
   }
 
@@ -107,7 +113,7 @@ export default function SwapTab() {
 
       const amountInRaw = parseUnits(fromAmount, fromToken.decimals);
       const router = new Contract(routerAddress, routerAbi, wallet);
-      console.log("Attempting swap with:", { fromToken, toToken, amountInRaw });
+      console.log("Attempting swap with:", { fromToken, toToken, amountInRaw, poolIdx, limitPrice, minOut, isBuy });
 
       if (fromToken.address !== MONAD_NATIVE_TOKEN.address) {
         const tokenContract = new Contract(fromToken.address, erc20Abi, wallet);
@@ -121,7 +127,19 @@ export default function SwapTab() {
         }
       }
 
-      const txSwap = await router.swap(fromToken.address, toToken.address, amountInRaw, walletAddress);
+      const txSwap = await router.swap(
+        fromToken.address,
+        toToken.address,
+        poolIdx,
+        isBuy,
+        true,
+        amountInRaw,
+        0,
+        limitPrice,
+        minOut,
+        0
+      );
+
       await txSwap.wait();
       console.log("Swap transaction success:", txSwap);
 
@@ -137,7 +155,6 @@ export default function SwapTab() {
   return (
     <div className="swap-tab">
       <h2>Swap Tokens</h2>
-
       <div className="swap-field">
         <TokenSelector
           label="From"
@@ -150,11 +167,9 @@ export default function SwapTab() {
           balances={balances}
         />
       </div>
-
       <div className="swap-switch">
         <button onClick={() => { setFromToken(toToken); setToToken(fromToken); }}>⇅</button>
       </div>
-
       <div className="swap-field">
         <TokenSelector
           label="To"
@@ -167,12 +182,7 @@ export default function SwapTab() {
           balances={balances}
         />
       </div>
-
-      <button
-        className="swap-button"
-        onClick={performSwap}
-        disabled={loading}
-      >
+      <button className="swap-button" onClick={performSwap} disabled={loading}>
         {loading ? "Swapping..." : "Swap"}
       </button>
     </div>
