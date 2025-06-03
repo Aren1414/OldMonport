@@ -1,15 +1,29 @@
 {
   "name": "monport",
   "version": "1.0.0",
+  "description": "A project for Monport",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "nodemon dist/index.js"
   },
   "keywords": [],
-  "author": "",
+  "author": "Mahdi",
   "license": "ISC",
-  "description": "",
   "dependencies": {
-    "@crocswap-libs/sdk": "^2.0.14"
+    "@crocswap-libs/sdk": "^2.0.14",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0"
+  },
+  "devDependencies": {
+    "@babel/cli": "^7.22.0",
+    "@babel/core": "^7.22.0",
+    "@babel/preset-env": "^7.22.0",
+    "@types/react": "^19.1.6",
+    "@types/react-dom": "^19.1.5",
+    "nodemon": "^3.0.1",
+    "typescript": "^5.8.3"
   }
 }
