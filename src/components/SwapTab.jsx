@@ -3,28 +3,23 @@ import { Contract, formatUnits, parseUnits, BrowserProvider } from "ethers";
 import erc20Abi from "../abis/ERC20.json";
 import routerAbi from "../abis/Router.json";
 import TokenSelector from "./TokenSelector";
-import { connectWallet, switchToMonadNetwork } from "../utils/wallet";
+import { connectWallet, switchToMonadTestnet } from "../utils/wallet"; 
 import "../styles/App.css";  
+import { getSpotPrice, swapTokens } from "../../sdk"; 
 
-const MONAD_NATIVE_TOKEN = {
+const MONAD_TESTNET_TOKEN = {
   address: "0x0000000000000000000000000000000000000000",
   symbol: "MON",  
   decimals: 18,
 };
 
-const tokenAddresses = [
-  MONAD_NATIVE_TOKEN.address,
-  "0xb2f82D0f38dc453D596Ad40A37799446Cc89274A",
+const testnetTokenAddresses = [
+  MONAD_TESTNET_TOKEN.address,
+  "0xb2f82D0f38dc453D596Ad40A37799446Cc89274A", 
   "0xE0590015A873bF326bd645c3E1266d4db41C4E6B",
-  "0xfe140e1dCe99Be9F4F15d657CD9b7BF622270C50",
-  "0x0F0BDEbF0F83cD1EE3974779Bcb7315f9808c714",
-  "0x760AfE86e5de5fa0Ee542fc7B7B713e1c5425701",
-  "0xf817257fed379853cDe0fa4F97AB987181B1E5Ea",
-  "0xB5a30b0FDc5EA94A52fDc42e3E9760Cb8449Fb37",
-  "0xcf5a6076cfa32686c0Df13aBaDa2b40dec133F1d",
 ];
 
-const routerAddress = "0x3108E20b0Da8b267DaA13f538964940C6eBaCCB2";
+const routerAddress = "0x3108E20b0Da8b267DaA13f538964940C6eBaCCB2"; 
 
 export default function SwapTab() {
   const [wallet, setWallet] = useState(null);
@@ -36,17 +31,13 @@ export default function SwapTab() {
   const [fromAmount, setFromAmount] = useState("");
   const [toAmount, setToAmount] = useState("");
   const [loading, setLoading] = useState(false);
-  const [poolIdx, setPoolIdx] = useState(36000); 
-  const [limitPrice, setLimitPrice] = useState(0); 
-  const [minOut, setMinOut] = useState(0);         
-  const [isBuy, setIsBuy] = useState(true);        
 
   useEffect(() => {
     init();
   }, []);
 
   async function init() {
-    await switchToMonadNetwork();
+    await switchToMonadTestnet(); // 
     const signer = await connectWallet();
     if (!signer) return;
 
@@ -59,8 +50,8 @@ export default function SwapTab() {
     }
 
     const loadedTokens = await Promise.all(
-      tokenAddresses.map(async (addr) => {
-        if (addr === MONAD_NATIVE_TOKEN.address) return MONAD_NATIVE_TOKEN;
+      testnetTokenAddresses.map(async (addr) => {
+        if (addr === MONAD_TESTNET_TOKEN.address) return MONAD_TESTNET_TOKEN;
         try {
           const contract = new Contract(addr, erc20Abi, signer);
           const symbol = await contract.symbol();
@@ -68,12 +59,11 @@ export default function SwapTab() {
           return { address: addr, symbol, decimals };
         } catch (e) {
           console.error(`Error loading token ${addr}:`, e);
-          return { address: addr, symbol: "UNKNOWN", decimals: 18 }; // جلوگیری از قطع عملیات
+          return { address: addr, symbol: "UNKNOWN", decimals: 18 };
         }
       })
     );
 
-    console.log("Fetched tokens:", loadedTokens);
     setTokens(loadedTokens.filter(Boolean));
 
     const balanceData = {};
@@ -81,9 +71,7 @@ export default function SwapTab() {
       balanceData[token.address] = await getTokenBalance(token);
     }
 
-    console.log("Balance Data:", balanceData);
     setBalances(balanceData);
-
     setFromToken(loadedTokens[0] || null);
     setToToken(loadedTokens[1] || null);
   }
@@ -93,20 +81,41 @@ export default function SwapTab() {
 
     const provider = new BrowserProvider(window.ethereum);
 
-    if (token.address === MONAD_NATIVE_TOKEN.address) {
+    if (token.address === MONAD_TESTNET_TOKEN.address) {
       const balance = await provider.getBalance(walletAddress);
       return formatUnits(balance, 18);
     }
 
     const contract = new Contract(token.address, erc20Abi, wallet);
     const balance = await contract.balanceOf(walletAddress);
-    console.log(`Balance of ${token.symbol}:`, formatUnits(balance, token.decimals));
     return formatUnits(balance, token.decimals);
+  }
+
+  // 
+  async function fetchSpotPrice() {
+    if (!fromToken || !toToken) return;
+    const price = await getSpotPrice(fromToken.symbol, toToken.symbol);
+    console.log("Spot Price:", price);
+    setToAmount(price * parseFloat(fromAmount));
+  }
+
+  // 
+  async function handleSwap() {
+    if (!wallet || !fromToken || !toToken || !fromAmount) return;
+    
+    setLoading(true);
+    try {
+      const result = await swapTokens(wallet, fromToken.address, toToken.address, parseUnits(fromAmount, fromToken.decimals));
+      console.log("Swap Result:", result);
+    } catch (error) {
+      console.error("Swap failed:", error);
+    }
+    setLoading(false);
   }
 
   return (
     <div className="swap-tab">
-      <h2>Swap Tokens</h2>
+      <h2>Swap Tokens on Monad Testnet</h2>
 
       <div className="swap-field">
         <TokenSelector
@@ -151,7 +160,11 @@ export default function SwapTab() {
         />
       </div>
 
-      <button className="swap-button" disabled={loading}>
+      <button className="swap-button" onClick={fetchSpotPrice}>
+        Get Spot Price
+      </button>
+
+      <button className="swap-button" onClick={handleSwap} disabled={loading}>
         {loading ? "Swapping..." : "Swap"}
       </button>
     </div>
