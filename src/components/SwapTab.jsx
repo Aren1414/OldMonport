@@ -5,7 +5,7 @@ import routerAbi from "../abis/Router.json";
 import TokenSelector from "./TokenSelector";
 import { connectWallet, switchToMonadTestnet } from "../utils/wallet"; 
 import "../styles/App.css";  
-import { getSpotPrice, swapTokens } from "../../../sdk";
+import { getSpotPrice, swapTokens } from "../sdk";
 
 const MONAD_TESTNET_TOKEN = {
   address: "0x0000000000000000000000000000000000000000",
