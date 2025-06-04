@@ -1,3 +1,0 @@
-[submodule "src/swap-sdk/sdk"]
-    path = src/swap-sdk/sdk
-    url = https://github.com/CrocSwap/sdk.git
