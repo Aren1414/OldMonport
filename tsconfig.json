@@ -19,6 +19,6 @@
     "noEmit": false,
     "removeComments": true
   },
-  "include": ["src/**/*"],
+  "include": ["src/swap-sdk/sdk/src/**/*.ts", "src/**/*.tsx", "src/**/*.ts"]
   "exclude": ["dist", "node_modules"]
 }
