@@ -1,9 +1,17 @@
 {
+  "version": 2,
   "rewrites": [
     { "source": "/swap", "destination": "/components/SwapTab.jsx" },
     { "source": "/profile", "destination": "/components/ProfileTab.jsx" },
     { "source": "/deploy", "destination": "/components/DeployTab.jsx" },
     { "source": "/leaderboard", "destination": "/components/LeaderboardTab.jsx" },
     { "source": "/welcome", "destination": "/components/WelcomeTab.jsx" }
-  ]
+  ],
+  "builds": [
+    { "src": "package.json", "use": "@vercel/node" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "/dist/$1" }
+  ],
+  "outputDirectory": "dist"
 }
