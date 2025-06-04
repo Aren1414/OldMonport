@@ -10,7 +10,4 @@
 .env.*.local
 
 # misc
-.DS_Store
-.env
-dist/
 .vercel
