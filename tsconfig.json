@@ -106,11 +106,16 @@
     // "allowUnusedLabels": true,                        /* Disable error reporting for unused labels. */
     // "allowUnreachableCode": true,                     /* Disable error reporting for unreachable code. */
 
-
+{
   "compilerOptions": {
-    // "skipDefaultLibCheck": true,                      /* Skip type checking .d.ts files that are included with TypeScript. */
-    "skipLibCheck": true                                 /* Skip type checking all .d.ts files. */
+    "strict": true,                                     
+    "noImplicitAny": true,                               
+    "strictNullChecks": true,                            
+    "skipLibCheck": true,                               
+    "target": "ES6",                                    
+    "module": "CommonJS"                                
   },
-  "include": ["src/**/*"],                               /* Include all TypeScript files inside src folder */
-  "exclude": ["dist"]                                    /* Exclude compiled output folder */
-}
+  "include": ["src/**/*"],                               
+  "exclude": ["dist"]                                    
+  }
+  
