@@ -19,6 +19,6 @@
     "noEmit": false,
     "removeComments": true
   },
-  "include": ["src/**/*"]
+  "include": ["src/**/*"],
   "exclude": ["dist", "node_modules"]
 }
