@@ -4,9 +4,21 @@
     "noImplicitAny": true,
     "strictNullChecks": true,
     "skipLibCheck": true,
-    "target": "ES6",
-    "module": "CommonJS"
+    "target": "ES2020",
+    "module": "CommonJS",
+    "outDir": "./dist",
+    "rootDir": "./src",
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "strictFunctionTypes": true,
+    "strictPropertyInitialization": true,
+    "noImplicitReturns": true,
+    "allowSyntheticDefaultImports": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": false,
+    "removeComments": true
   },
   "include": ["src/**/*"],
-  "exclude": ["dist"]
+  "exclude": ["dist", "node_modules"]
 }
