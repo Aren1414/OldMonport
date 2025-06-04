@@ -1,0 +1,12 @@
+{
+  "compilerOptions": {
+    "strict": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
+    "skipLibCheck": true,
+    "target": "ES6",
+    "module": "CommonJS"
+  },
+  "include": ["src/**/*"],
+  "exclude": ["dist"]
+}
