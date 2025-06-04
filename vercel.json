@@ -8,11 +8,7 @@
     { "source": "/welcome", "destination": "/components/WelcomeTab.jsx" }
   ],
   "builds": [
-    { "src": "package.json", "use": "@vercel/node" },
-    { "src": "tsconfig.json", "use": "@vercel/node" }
-  ],
-  "routes": [
-    { "src": "/(.*)", "dest": "/dist/$1" }
+    { "src": "package.json", "use": "@vercel/node" }
   ],
   "outputDirectory": "dist"
 }
