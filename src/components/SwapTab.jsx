@@ -1,11 +1,11 @@
 import { useEffect, useState } from "react";
-import { Contract, formatUnits, parseUnits, BrowserProvider } from "ethers";
+import { ethers } from "../../src/swap-sdk/sdk/node_modules/ethers";
 import erc20Abi from "../abis/ERC20.json";
 import routerAbi from "../abis/Router.json";
 import TokenSelector from "./TokenSelector";
 import { connectWallet, switchToMonadTestnet } from "../utils/wallet"; 
 import "../styles/App.css";  
-import { swap, pool } from "@crocswap-libs/sdk";
+import { swap, pool } from "../../src/swap-sdk/sdk/dist/index.js";
 
 const MONAD_TESTNET_TOKEN = {
   address: "0x0000000000000000000000000000000000000000",
