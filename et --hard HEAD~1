@@ -1,0 +1,144 @@
+[33mc11fc29[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m Removed unnecessary SDK folders
+[33me5bd632[m Renamed SDK folder to @crocswap-libs/sdk
+[33mf0af7f4[m Removed unnecessary dist and node_modules folders
+[33mefe0d14[m Added Crocswap SDK directly to repository
+[33m157376d[m Removed sdk from repository
+[33macb073f[m Updated .gitignore settings
+[33m2ddf09f[m Re-added sdk to repository as a normal directory
+[33mafe2f66[m Added Crocswap SDK and updated repository
+[33ma110f5b[m Added sdk directly to repository and updated package.json
+[33mbd2c87c[m Update SwapTab.jsx
+[33md002126[m Update SwapTab.jsx
+[33m3bd2e36[m Update SwapTab.jsx
+[33mf4bac68[m Update SwapTab.jsx
+[33m0cbc31b[m Update package.json
+[33m40ddb8d[m Update vercel.json
+[33mff09ff7[m Update vercel.json
+[33m5775fb4[m Update vercel.json
+[33m3383882[m Update package.json
+[33m571ae6a[m Update vercel.json
+[33m2ca0959[m Update vercel.json
+[33m14b893d[m Update tsconfig.json
+[33m13fb31a[m Update tsconfig.json
+[33m0e53d46[m Update tsconfig.json
+[33ma7c747e[m Update tsconfig.json
+[33m86d6261[m Update tsconfig.json
+[33m4a12cd2[m Update vercel.json
+[33m60c7411[m Update vercel.json
+[33m87da607[m Update vercel.json
+[33mce463e1[m Update vercel.json
+[33m72dd724[m Update vercel.json
+[33m0545c41[m Update vercel.json
+[33m2d7e5a7[m Update tsconfig.json
+[33me5dd977[m Update tsconfig.json
+[33m743a614[m Update vercel.json
+[33m3d53561[m Update tsconfig.json
+[33m988253d[m Update tsconfig.json
+[33m8b49875[m Update tsconfig.json
+[33m2122d9c[m Update tsconfig.json
+[33mf323c8d[m Updated ethers and dependencies for redeploy
+[33m196f935[m Updated swap-sdk and tsconfig.json for redeploy
+[33m3ba4680[m Kept tsconfig.json from GitHub to resolve merge conflict
+[33m6c105c6[m Resolved merge conflict in tsconfig.json
+[33m82a5b18[m Update tsconfig.json
+[33m55fbca3[m Update tsconfig.json
+[33m72c3341[m Ignored dist directory
+[33mf6de69c[m Resolved merge conflict in package-lock.json
+[33mc86ad08[m Updated package dependencies
+[33m705dc35[m Update tsconfig.json
+[33me663c62[m Saved local changes before merging
+[33m063aa33[m Updated tsconfig.json for fix
+[33m83b3554[m Update tsconfig.json
+[33mbd883ba[m Update tsconfig.json
+[33mabc7895[m Update tsconfig.json
+[33mb0c64a1[m Update tsconfig.json
+[33me1df1d7[m Update tsconfig.json
+[33m128cde7[m Update tsconfig.json
+[33m3391fee[m Update tsconfig.json
+[33m7cd01b9[m Updated .gitignore for optimized project
+[33mbc035c3[m Removed unnecessary files
+[33mff8c82a[m Updated package.json for correct dependencies
+[33m6deeba2[m Updated dependencies and TypeScript configuration
+[33ma2f5fb8[m Update tsconfig.json
+[33m49a0e56[m Added tsconfig.json for TypeScript configuration
+[33m4ba9fbf[m Added CrocSwap SDK as a submodule
+[33mb8db318[m Update SwapTab.jsx
+[33md206a06[m Added CrocSwap SDK for SwapTab
+[33mb37bd39[m Update SwapTab.jsx
+[33mdd4bcd5[m Update package.js
+[33m612aab1[m Applied project cleanup and restored JSX files
+[33md1b3a90[m Removed unnecessary files
+[33mcc4a555[m Restored App.js and index.js
+[33m6b7de5b[m Restored JSX format for components
+[33m53c1ab7[m Removed dist folder
+[33m3ada16a[m Ignored dist folder
+[33me1b75de[m Migrated from JSX to TSX
+[33mb8e3cbf[m Updated dependencies
+[33mc3b24aa[m Update SwapTab.jsx
+[33me214a01[m Cleaned up project structure and removed unnecessary folders
+[33m92d6b70[m Resolved merge conflicts
+[33mc251819[m Initialized new Monport project and installed dependencies
+[33m3f6bd30[m Update SwapTab.jsx
+[33m2c7e541[m Added sdk folder to repository
+[33m51790e2[m Resolved merge conflicts
+[33ma6d441c[m Updated dependencies and SDK path
+[33m04730b2[m Backup before npm audit fix
+[33m90fdae1[m Update SwapTab.jsx
+[33m4251658[m Update SwapTab.jsx
+[33m6f0b74f[m Update SwapTab.jsx
+[33m4eb6e9a[m Updated dependencies for Monad Testnet
+[33m1638961[m Fixed sdk visibility in GitHub
+[33md9578e2[m Added CrocSwap SDK to Monport project
+[33m1dd9d6a[m Update SwapTab.jsx
+[33mfbf24ed[m Update SwapTab.jsx
+[33m8719dc6[m Update TokenSelector.js
+[33md4e11d6[m Update SwapTab.jsx
+[33m468b848[m Update SwapTab.jsx
+[33m2828532[m Update SwapTab.jsx
+[33mccf5aea[m Update SwapTab.jsx
+[33m02f263b[m Update SwapTab.jsx
+[33m4c5802d[m Update SwapTab.jsx
+[33m9fece78[m Update SwapTab.jsx
+[33m1dc29ed[m Update TokenSelector.js
+[33m8b67183[m Update SwapTab.jsx
+[33m421d1ac[m Update monad.js
+[33mcd7300e[m Update wallet.js
+[33mf8b6918[m Update SwapTab.jsx
+[33m6706c82[m Update ProfileTab.jsx
+[33m580bbb1[m Update DeployTab.jsx
+[33m81f757f[m Update WelcomeTab.jsx
+[33mb5f39f2[m Update TokenSelector.js
+[33mfb90f47[m Update SwapTab.jsx
+[33m95bf751[m Update erc20.js
+[33m01b6df3[m Updated ethers version and removed old dependencies
+[33m464e569[m Fixed TypeScript issues and cleaned dependencies
+[33m7455331[m Fixed TypeScript issues and updated dependencies
+[33m834b86a[m remove: delete index.js from root
+[33m8d38e41[m remove: delete unused folders (0x-examples, monport-app, pages/api)
+[33m07e8527[m Update package.json
+[33mf8d7afd[m fix: add typescript dependency for Vercel build
+[33m95fc1c5[m Save local changes before pulling
+[33mefcbd3d[m Add tsconfig.json and other fixes
+[33m255a1b2[m Update SwapTab.jsx
+[33m123ee03[m Update SwapTab.jsx
+[33m5572386[m Update wallet.js
+[33mb4ae82d[m Update TokenSelector.js
+[33mb747be8[m Update contracts.js
+[33m12e46a3[m Update SwapTab.jsx
+[33mc44d5c9[m Update SwapTab.jsx
+[33m1caafd8[m Update SwapTab.jsx
+[33m946f782[m Update wallet.js
+[33m33db5b2[m Update ERC20.json
+[33m064b603[m Update TokenSelector.js
+[33m68edef5[m Update SwapTab.jsx
+[33ma42331b[m Update and rename CrocSwapDex.json to Router.json
+[33m9db7ecf[m Update SwapTab.jsx
+[33m4b6ddc7[m Update CrocSwapDex.json
+[33m5aebb4f[m Update erc20.js
+[33m1273558[m Update SwapTab.jsx
+[33m830637c[m Update SwapTab.jsx
+[33m22255c3[m Update SwapTab.jsx
+[33m4d39715[m Update SwapTab.jsx
+[33m6fddf0d[m Create quote.js
+[33mc67c47a[m Delete pages/api/quote.js
+[33mc2e9c10[m Update and rename pages/quote.js to pages/api/quote.js
