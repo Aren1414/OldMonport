@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ethers } from "../../src/swap-sdk/sdk/node_modules/ethers";
+import { ethers } from "ethers";
 import erc20Abi from "../abis/ERC20.json";
 import routerAbi from "../abis/Router.json";
 import TokenSelector from "./TokenSelector";
