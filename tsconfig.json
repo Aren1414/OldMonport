@@ -7,7 +7,7 @@
     "target": "ES2020",
     "module": "CommonJS",
     "outDir": "./dist",
-    "rootDir": "./src/swap-sdk/sdk/src",
+    "rootDir": "./src",
     "esModuleInterop": true,
     "forceConsistentCasingInFileNames": true,
     "strictFunctionTypes": true,
@@ -19,6 +19,6 @@
     "noEmit": false,
     "removeComments": true
   },
-  "include": ["src/swap-sdk/sdk/src/**/*.ts", "src/swap-sdk/sdk/src/**/*.tsx"],
+  "include": ["src/**/*"],
   "exclude": ["dist", "node_modules"]
 }
