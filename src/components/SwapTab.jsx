@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { CrocSwapPlan } from "@crocswap-libs/sdk/dist/swap";
 import { CrocPoolView } from "@crocswap-libs/sdk/dist/pool";
 import { CrocTokenView } from "@crocswap-libs/sdk/dist/tokens";
-import { CrocContext } from "@crocswap-libs/sdk/dist/context";
 import { ERC20 } from "@crocswap-libs/sdk/dist/abis/erc20";
 import { Query } from "@crocswap-libs/sdk/dist/abis/query";
 import { Liquidity } from "@crocswap-libs/sdk/dist/encoding/liquidity";
@@ -24,7 +23,6 @@ const TOKENS = [
 const SwapTab = () => {
   const [swapPlan, setSwapPlan] = useState(null);
   const [poolView, setPoolView] = useState(null);
-  const [context, setContext] = useState(null);
   const [selectedBaseToken, setSelectedBaseToken] = useState(TOKENS[0]);
   const [selectedQuoteToken, setSelectedQuoteToken] = useState(TOKENS[1]);
   const [amount, setAmount] = useState("1");
@@ -36,21 +34,17 @@ const SwapTab = () => {
     const provider = new JsonRpcProvider(MONAD_RPC_URL); 
     const swapInstance = new CrocSwapPlan(provider);
     const poolInstance = new CrocPoolView();
-    const ctxInstance = new CrocContext(provider);
 
     setSwapPlan(swapInstance);
     setPoolView(poolInstance);
-    setContext(ctxInstance);
   }, []);
 
   const fetchTokenDetails = async () => {
-    if (!context) return;
-    const tokenData = await new ERC20(selectedBaseToken, context).getDetails();
+    const tokenData = await new ERC20(selectedBaseToken).getDetails();
     setTokenInfo(tokenData);
   };
 
   const calculateImpact = async () => {
-    if (!poolView) return;
     const impact = await new Liquidity(poolView).calcImpact(selectedBaseToken, selectedQuoteToken, amount);
     setPriceImpact(impact.percentChange);
   };
