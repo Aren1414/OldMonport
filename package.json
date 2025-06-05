@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc && cp -r public build",
-    "start": "node build/index.js",
+    "build": "react-scripts build",
+    "start": "serve -s build",
     "dev": "react-scripts start"
   },
   "keywords": [],
@@ -31,6 +31,7 @@
     "@types/react-dom": "^19.1.5",
     "nodemon": "^3.0.1",
     "react-scripts": "^5.0.1",
+    "serve": "^14.0.1",
     "typescript": "^4.9.5",
     "vitest": "^3.2.1"
   }
