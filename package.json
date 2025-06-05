@@ -5,8 +5,8 @@
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "build": "tsc",
-    "start": "react-scripts start",
+    "build": "tsc && cp -r public build",
+    "start": "node build/index.js",
     "dev": "react-scripts start"
   },
   "keywords": [],
