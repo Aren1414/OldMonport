@@ -27,16 +27,16 @@
     "build-local": "yarn build-all && yarn copy-local"
   },
   "devDependencies": {
-    "@typescript-eslint/eslint-plugin": "^8.18.2",
-    "@typescript-eslint/parser": "^8.18.2",
+    "@typescript-eslint/eslint-plugin": "^8.33.1",
+    "@typescript-eslint/parser": "^8.33.1",
     "esbuild": "^0.24.2",
-    "eslint": "^9.17.0",
+    "eslint": "^9.28.0",
     "ts-node": "^10.9.2",
-    "typedoc": "^0.27.5",
-    "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "typedoc": "^0.27.9",
+    "typescript": "^5.8.3",
+    "vitest": "^2.1.9"
   },
   "dependencies": {
-    "ethers": "^6.13.5"
+    "ethers": "^6.14.3"
   }
 }
