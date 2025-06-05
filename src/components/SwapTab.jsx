@@ -2,7 +2,6 @@ import React, { useEffect, useState } from "react";
 import { CrocSwapPlan } from "@crocswap-libs/sdk/dist/swap";
 import { CrocPoolView } from "@crocswap-libs/sdk/dist/pool";
 import { CrocTokenView } from "@crocswap-libs/sdk/dist/tokens";
-import { ERC20 } from "@crocswap-libs/sdk/dist/abis/erc20";
 import { Query } from "@crocswap-libs/sdk/dist/abis/query";
 import { Liquidity } from "@crocswap-libs/sdk/dist/encoding/liquidity";
 import { PriceCalc } from "@crocswap-libs/sdk/dist/utils/price";
@@ -40,7 +39,8 @@ const SwapTab = () => {
   }, []);
 
   const fetchTokenDetails = async () => {
-    const tokenData = await new ERC20(selectedBaseToken).getDetails();
+    if (!poolView) return;
+    const tokenData = await new CrocTokenView(poolView).getTokenDetails(selectedBaseToken);
     setTokenInfo(tokenData);
   };
 
