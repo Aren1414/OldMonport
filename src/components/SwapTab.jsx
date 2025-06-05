@@ -7,7 +7,7 @@ import { ERC20 } from "@crocswap-libs/sdk/dist/abis/erc20";
 import { Query } from "@crocswap-libs/sdk/dist/abis/query";
 import { Liquidity } from "@crocswap-libs/sdk/dist/encoding/liquidity";
 import { PriceCalc } from "@crocswap-libs/sdk/dist/utils/price";
-import { ethers } from "ethers";
+import { JsonRpcProvider } from "ethers"; 
 
 const MONAD_RPC_URL = "https://testnet-rpc.monad.xyz/";
 const TOKENS = [
@@ -33,7 +33,7 @@ const SwapTab = () => {
   const [tokenInfo, setTokenInfo] = useState(null);
 
   useEffect(() => {
-    const provider = new ethers.providers.JsonRpcProvider(MONAD_RPC_URL);
+    const provider = new JsonRpcProvider(MONAD_RPC_URL); 
     const swapInstance = new CrocSwapPlan(provider);
     const poolInstance = new CrocPoolView();
     const ctxInstance = new CrocContext(provider);
