@@ -7,12 +7,14 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "react-scripts build",
     "start": "serve -s build",
-    "dev": "react-scripts start"
+    "dev": "react-scripts start",
+    "build-local": "yarn build-local"
   },
   "keywords": [],
   "author": "Mahdi",
   "license": "ISC",
   "dependencies": {
+    "@crocswap-libs/sdk": "^2.0.14",
     "css-select": "^5.1.0",
     "ethers": "^6.14.3",
     "nft.storage": "^3.4.0",
