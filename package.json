@@ -7,23 +7,18 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "build": "react-scripts build",
     "start": "serve -s build",
-    "dev": "react-scripts start",
-    "build-local": "yarn build-local"
+    "dev": "react-scripts start"
   },
   "keywords": [],
   "author": "Mahdi",
   "license": "ISC",
   "dependencies": {
-    "@crocswap-libs/sdk": "^2.0.14",
-    "css-select": "^5.1.0",
     "ethers": "^6.14.3",
     "nft.storage": "^3.4.0",
     "npm": "^11.4.1",
-    "nth-check": "^2.1.1",
     "postcss": "^8.5.4",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
-    "svgo": "^3.3.2",
     "webpack-dev-server": "^5.2.2"
   },
   "devDependencies": {
@@ -36,10 +31,6 @@
     "nodemon": "^3.0.1",
     "react-scripts": "^5.0.1",
     "serve": "^14.0.1",
-<<<<<<< HEAD
-=======
-    "ts-node": "^10.9.2",
->>>>>>> b917eab (Cleaned up unnecessary files and dependencies, project structure is now organized)
     "typescript": "^4.9.5",
     "vitest": "^3.2.1"
   },
