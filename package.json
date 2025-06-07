@@ -36,6 +36,10 @@
     "nodemon": "^3.0.1",
     "react-scripts": "^5.0.1",
     "serve": "^14.0.1",
+<<<<<<< HEAD
+=======
+    "ts-node": "^10.9.2",
+>>>>>>> b917eab (Cleaned up unnecessary files and dependencies, project structure is now organized)
     "typescript": "^4.9.5",
     "vitest": "^3.2.1"
   },
