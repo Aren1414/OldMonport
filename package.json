@@ -13,6 +13,8 @@
   "author": "Mahdi",
   "license": "ISC",
   "dependencies": {
+    "@farcaster/frame-sdk": "^0.0.60",
+    "@farcaster/hub-nodejs": "^0.13.6",
     "ethers": "^6.14.3",
     "nft.storage": "^3.4.0",
     "npm": "^11.4.1",
