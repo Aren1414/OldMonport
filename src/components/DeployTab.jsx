@@ -68,5 +68,3 @@ const DeployTab = () => {
     </div>
   );
 };
-
-export default DeployTab;
